@@ -209,7 +209,7 @@ class OracleDatabase(Database):
             logger.debug(f"执行的 SQL 语句: {sql}")
             logger.debug(f"使用的参数: {params}")
             error, = e.args
-            logger.error(f"执行 SQL 时出现错误: {error.message}")
+            logger.debug(f"执行 SQL 时出现错误: {error.message}")
 
         return cursor
 

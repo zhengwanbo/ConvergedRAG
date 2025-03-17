@@ -281,9 +281,19 @@ class Dealer:
         ins_embd = []
         for chunk_id in sres.ids:
             vector = sres.field[chunk_id].get(vector_column, zero_vector)
-            if isinstance(vector, str):
-                vector = [float(v) for v in vector.split("\t")]
-            ins_embd.append(vector)
+            if isinstance(vector, str) and vector.startswith("array('f', ["):
+               pattern = r'\[([^]]+)\]'
+               match = re.search(pattern, vector)
+               if match:
+                   numbers_str = match.group(1)
+                   vector = [float(num) for num in numbers_str.split(',')]
+                   ins_embd.append(vector)
+               else:
+                   raise ValueError("无法解析 vector 字符串")
+            elif isinstance(vector, str):
+               vector = [float(v) for v in vector.split("\t")]
+               ins_embd.append(vector)
+
         if not ins_embd:
             return [], [], []
 
