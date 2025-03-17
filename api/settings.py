@@ -16,7 +16,6 @@
 import os
 from datetime import date
 from enum import IntEnum, Enum
-import json
 import rag.utils.es_conn
 import rag.utils.infinity_conn
 import rag.utils.oracle_conn
@@ -26,7 +25,6 @@ from rag.nlp import search
 from graphrag import search as kg_search
 from api.utils import get_base_config, decrypt_database_config
 from api.constants import RAG_FLOW_SERVICE_NAME
-from api.utils.file_utils import get_project_base_directory
 
 LIGHTEN = int(os.environ.get('LIGHTEN', "0"))
 
@@ -65,7 +63,7 @@ kg_retrievaler = None
 
 
 def init_settings():
-    global LLM, LLM_FACTORY, LLM_BASE_URL, LIGHTEN, DATABASE_TYPE, DATABASE, FACTORY_LLM_INFOS
+    global LLM, LLM_FACTORY, LLM_BASE_URL, LIGHTEN, DATABASE_TYPE, DATABASE
     LIGHTEN = int(os.environ.get('LIGHTEN', "0"))
     DATABASE_TYPE = os.getenv("DB_TYPE", 'oracle')
     DATABASE = decrypt_database_config(name=DATABASE_TYPE)
@@ -73,7 +71,7 @@ def init_settings():
     LLM_DEFAULT_MODELS = LLM.get("default_models", {})
     LLM_FACTORY = LLM.get("factory", "Tongyi-Qianwen")
     LLM_BASE_URL = LLM.get("base_url")
-    
+
     try:
         with open(os.path.join(get_project_base_directory(), "conf", "llm_factories.json"), "r") as f:
             FACTORY_LLM_INFOS = json.load(f)["factory_llm_infos"]
@@ -82,22 +80,70 @@ def init_settings():
 
     global CHAT_MDL, EMBEDDING_MDL, RERANK_MDL, ASR_MDL, IMAGE2TEXT_MDL
     if not LIGHTEN:
-        EMBEDDING_MDL = "BAAI/bge-large-zh-v1.5@BAAI"
+        default_llm = {
+            "Tongyi-Qianwen": {
+                "chat_model": "qwen-plus",
+                "embedding_model": "text-embedding-v2",
+                "image2text_model": "qwen-vl-max",
+                "asr_model": "paraformer-realtime-8k-v1",
+            },
+            "OpenAI": {
+                "chat_model": "gpt-3.5-turbo",
+                "embedding_model": "text-embedding-ada-002",
+                "image2text_model": "gpt-4-vision-preview",
+                "asr_model": "whisper-1",
+            },
+            "Azure-OpenAI": {
+                "chat_model": "gpt-35-turbo",
+                "embedding_model": "text-embedding-ada-002",
+                "image2text_model": "gpt-4-vision-preview",
+                "asr_model": "whisper-1",
+            },
+            "ZHIPU-AI": {
+                "chat_model": "glm-3-turbo",
+                "embedding_model": "embedding-2",
+                "image2text_model": "glm-4v",
+                "asr_model": "",
+            },
+            "Ollama": {
+                "chat_model": "qwen-14B-chat",
+                "embedding_model": "flag-embedding",
+                "image2text_model": "",
+                "asr_model": "",
+            },
+            "Moonshot": {
+                "chat_model": "moonshot-v1-8k",
+                "embedding_model": "",
+                "image2text_model": "",
+                "asr_model": "",
+            },
+            "DeepSeek": {
+                "chat_model": "deepseek-chat",
+                "embedding_model": "",
+                "image2text_model": "",
+                "asr_model": "",
+            },
+            "VolcEngine": {
+                "chat_model": "",
+                "embedding_model": "",
+                "image2text_model": "",
+                "asr_model": "",
+            },
+            "BAAI": {
+                "chat_model": "",
+                "embedding_model": "BAAI/bge-large-zh-v1.5",
+                "image2text_model": "",
+                "asr_model": "",
+                "rerank_model": "BAAI/bge-reranker-v2-m3",
+            }
+        }
 
-    if LLM_DEFAULT_MODELS:
-        CHAT_MDL = LLM_DEFAULT_MODELS.get("chat_model", CHAT_MDL)
-        EMBEDDING_MDL = LLM_DEFAULT_MODELS.get("embedding_model", EMBEDDING_MDL)
-        RERANK_MDL = LLM_DEFAULT_MODELS.get("rerank_model", RERANK_MDL)
-        ASR_MDL = LLM_DEFAULT_MODELS.get("asr_model", ASR_MDL)
-        IMAGE2TEXT_MDL = LLM_DEFAULT_MODELS.get("image2text_model", IMAGE2TEXT_MDL)
-
-        # factory can be specified in the config name with "@". LLM_FACTORY will be used if not specified
-        CHAT_MDL = CHAT_MDL + (f"@{LLM_FACTORY}" if "@" not in CHAT_MDL and CHAT_MDL != "" else "")
-        EMBEDDING_MDL = EMBEDDING_MDL + (f"@{LLM_FACTORY}" if "@" not in EMBEDDING_MDL and EMBEDDING_MDL != "" else "")
-        RERANK_MDL = RERANK_MDL + (f"@{LLM_FACTORY}" if "@" not in RERANK_MDL and RERANK_MDL != "" else "")
-        ASR_MDL = ASR_MDL + (f"@{LLM_FACTORY}" if "@" not in ASR_MDL and ASR_MDL != "" else "")
-        IMAGE2TEXT_MDL = IMAGE2TEXT_MDL + (
-            f"@{LLM_FACTORY}" if "@" not in IMAGE2TEXT_MDL and IMAGE2TEXT_MDL != "" else "")
+        if LLM_FACTORY:
+            CHAT_MDL = default_llm[LLM_FACTORY]["chat_model"] + f"@{LLM_FACTORY}"
+            ASR_MDL = default_llm[LLM_FACTORY]["asr_model"] + f"@{LLM_FACTORY}"
+            IMAGE2TEXT_MDL = default_llm[LLM_FACTORY]["image2text_model"] + f"@{LLM_FACTORY}"
+        EMBEDDING_MDL = default_llm["BAAI"]["embedding_model"] + "@BAAI"
+        RERANK_MDL = default_llm["BAAI"]["rerank_model"] + "@BAAI"
 
     global API_KEY, PARSERS, HOST_IP, HOST_PORT, SECRET_KEY
     API_KEY = LLM.get("api_key", "")
@@ -125,7 +171,7 @@ def init_settings():
     FEISHU_OAUTH = get_base_config("oauth", {}).get("feishu")
 
     global DOC_ENGINE, docStoreConn, retrievaler, kg_retrievaler
-    DOC_ENGINE = os.environ.get('DOC_ENGINE', "oracle")
+    DOC_ENGINE = os.environ.get('DOC_ENGINE', "elasticsearch")
     lower_case_doc_engine = DOC_ENGINE.lower()
     if lower_case_doc_engine == "elasticsearch":
         docStoreConn = rag.utils.es_conn.ESConnection()
