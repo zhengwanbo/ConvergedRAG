@@ -387,12 +387,42 @@ class OracleMigrator(SchemaMigrator):
         statement = 'ALTER TABLE %s %s' % (table, operation)
         return self.execute(statement)
 
+    def get_column_type(self, field):
+        # 根据 Peewee 字段类型映射到 Oracle 数据类型
+        if isinstance(field, CharField):
+            return f"VARCHAR2({field.max_length})"
+        # 可以根据需要添加更多字段类型的映射
+        raise ValueError(f"Unsupported field type: {type(field)}")
+
     def add_column(self, table, column_name, field):
-        # Oracle 不支持在 ADD COLUMN 时使用 AS 关键字
-        operations = []
-        field_clause = field.ddl(column_name)
-        operations.append(('ADD %s' % field_clause, []))
-        return self._alter_table(table, *operations[0])
+        # 根据字段类型生成对应的 Oracle 数据类型
+        data_type = self.get_column_type(field)
+        # 构建 ALTER TABLE 语句
+        operation = f'ADD "{column_name}" {data_type}'
+        if not field.null:
+            operation += " NOT NULL"
+        if field.default is not None:
+            if isinstance(field.default, str):
+                operation += f" DEFAULT '{field.default}'"
+            else:
+                operation += f" DEFAULT {field.default}"
+        # 执行 ALTER TABLE 语句
+        self._alter_table(table, operation)
+
+    def alter_column_type(self, table, column_name, field):
+        # 根据字段类型生成对应的 Oracle 数据类型
+        data_type = self.get_column_type(field)
+        # 构建 ALTER TABLE 语句
+        operation = f'MODIFY "{column_name}" {data_type}'
+        if not field.null:
+            operation += " NOT NULL"
+        if field.default is not None:
+            if isinstance(field.default, str):
+                operation += f" DEFAULT '{field.default}'"
+            else:
+                operation += f" DEFAULT {field.default}"
+        # 执行 ALTER TABLE 语句
+        self._alter_table(table, operation)
 
     def drop_column(self, table, column_name, cascade=True):
         # Oracle 使用 DROP COLUMN 而不是 DROP

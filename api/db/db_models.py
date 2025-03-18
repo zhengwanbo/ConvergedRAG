@@ -915,7 +915,7 @@ class Task(DataBaseModel):
     doc_id = CharField(max_length=32, null=False, index=True)
     from_page = IntegerField(default=0)
     to_page = IntegerField(default=100000000)
-    task_type = CharField(max_length=32, null=False, default="")
+    task_type = CharField(max_length=32, null=False, default="A")
     priority = IntegerField(default=0)
 
     begin_at = DateTimeField(null=True, index=True)
@@ -1063,13 +1063,16 @@ class CanvasTemplate(DataBaseModel):
 def migrate_db():
     with DB.transaction():
         migrator = DatabaseMigrator[settings.DATABASE_TYPE.upper()].value(DB)
+        logger.debug(f"migrate_db {migrator}")
         try:
             migrate(
                 migrator.add_column('file', 'source_type', CharField(max_length=128, null=False, default="",
                                                                      help_text="where dose this document come from",
                                                                      index=True))
             )
-        except Exception:
+            logger.debug("migrator.add_column executed successfully")
+        except Exception as e:
+            logger.error(f"Error executing add_column: {e}")
             pass
         try:
             migrate(
@@ -1082,7 +1085,7 @@ def migrate_db():
             pass
         try:
             migrate(
-                migrator.add_column('dialog', 'rerank_id', CharField(max_length=128, null=False, default="",
+                migrator.add_column('dialog', 'rerank_id', CharField(max_length=128, null=False, default="BAAI/bge-reranker-v2-m3",
                                                                      help_text="default rerank model ID"))
 
             )
@@ -1190,7 +1193,7 @@ def migrate_db():
         try:
             migrate(
                 migrator.add_column("task", "task_type",
-                                    CharField(max_length=32, null=False, default=""))
+                                    CharField(max_length=32, null=False, default="A"))
             )
         except Exception:
             pass
