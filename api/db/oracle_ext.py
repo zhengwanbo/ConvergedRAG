@@ -221,7 +221,6 @@ class OracleDatabase(Database):
         sql, params = ctx.sql(query).query()
         return self.execute_sql(sql, params)
 
-
     def insert(self, insert=None, columns=None, **kwargs):
         if kwargs:
             insert = {} if insert is None else insert
@@ -384,8 +383,18 @@ class PooledOracleDatabase(PooledDatabase, OracleDatabase):
 
 class OracleMigrator(SchemaMigrator):
     def _alter_table(self, table, operation):
-        statement = 'ALTER TABLE %s %s' % (table, operation)
-        return self.execute(statement)
+        try:
+            # 这里应该是实际执行 SQL 语句的代码
+            cursor = self.database.cursor()
+            statement = 'ALTER TABLE "%s" %s' % (table, operation)
+            logger.debug(f"OracleMigrator ALTER TABLE: {statement}")
+            cursor.execute(statement)
+            self.database.commit()
+            return True
+        except Exception as e:
+            logger.debug(f"Error executing statement: {e}")
+            self.db.rollback()
+            return False
 
     def get_column_type(self, field):
         # 根据 Peewee 字段类型映射到 Oracle 数据类型
@@ -399,13 +408,13 @@ class OracleMigrator(SchemaMigrator):
         data_type = self.get_column_type(field)
         # 构建 ALTER TABLE 语句
         operation = f'ADD "{column_name}" {data_type}'
-        if not field.null:
-            operation += " NOT NULL"
         if field.default is not None:
             if isinstance(field.default, str):
                 operation += f" DEFAULT '{field.default}'"
             else:
                 operation += f" DEFAULT {field.default}"
+        if not field.null:
+            operation += " NOT NULL"
         # 执行 ALTER TABLE 语句
         self._alter_table(table, operation)
 
@@ -414,13 +423,13 @@ class OracleMigrator(SchemaMigrator):
         data_type = self.get_column_type(field)
         # 构建 ALTER TABLE 语句
         operation = f'MODIFY "{column_name}" {data_type}'
-        if not field.null:
-            operation += " NOT NULL"
         if field.default is not None:
             if isinstance(field.default, str):
                 operation += f" DEFAULT '{field.default}'"
             else:
                 operation += f" DEFAULT {field.default}"
+        if not field.null:
+            operation += " NOT NULL"
         # 执行 ALTER TABLE 语句
         self._alter_table(table, operation)
 

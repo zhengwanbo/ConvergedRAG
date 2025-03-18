@@ -978,6 +978,7 @@ class Dialog(DataBaseModel):
     rerank_id = CharField(
         max_length=128,
         null=False,
+        default="bge-m3",
         help_text="default rerank model ID")
 
     kb_ids = JSONField(null=False, default=[])
@@ -1066,7 +1067,7 @@ def migrate_db():
         logger.debug(f"migrate_db {migrator}")
         try:
             migrate(
-                migrator.add_column('file', 'source_type', CharField(max_length=128, null=False, default="",
+                migrator.add_column('file', 'source_type', CharField(max_length=128, null=False, default="A",
                                                                      help_text="where dose this document come from",
                                                                      index=True))
             )
@@ -1199,8 +1200,7 @@ def migrate_db():
             pass
         try:
             migrate(
-                migrator.add_column("task", "priority",
-                                    IntegerField(default=0))
+                migrator.add_column("task", "priority",IntegerField(default=0))
             )
         except Exception:
             pass
