@@ -216,8 +216,15 @@ class OracleDatabase(Database):
 
     def execute(self, query, commit=None, **context_options):
         if commit is not None:
-            __deprecated__('"commit" has been deprecated and is a no-op.')
+              if commit:
+                self.commit()  # 添加commit操作
+                
         ctx = self.get_sql_context(**context_options)
+        
+        # 处理Oracle不支持的ON CONFLICT语法
+        if hasattr(query, '_on_conflict') and query._on_conflict:
+            query._on_conflict = None  # 移除冲突处理
+            
         sql, params = ctx.sql(query).query()
         return self.execute_sql(sql, params)
 
