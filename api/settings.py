@@ -16,6 +16,7 @@
 import os
 from datetime import date
 from enum import IntEnum, Enum
+import json
 import rag.utils.es_conn
 import rag.utils.infinity_conn
 import rag.utils.oracle_conn
@@ -25,6 +26,7 @@ from rag.nlp import search
 from graphrag import search as kg_search
 from api.utils import get_base_config, decrypt_database_config
 from api.constants import RAG_FLOW_SERVICE_NAME
+from api.utils.file_utils import get_project_base_directory
 
 LIGHTEN = int(os.environ.get('LIGHTEN', "0"))
 
@@ -171,7 +173,7 @@ def init_settings():
     FEISHU_OAUTH = get_base_config("oauth", {}).get("feishu")
 
     global DOC_ENGINE, docStoreConn, retrievaler, kg_retrievaler
-    DOC_ENGINE = os.environ.get('DOC_ENGINE', "elasticsearch")
+    DOC_ENGINE = os.environ.get('DOC_ENGINE', "oracle")
     lower_case_doc_engine = DOC_ENGINE.lower()
     if lower_case_doc_engine == "elasticsearch":
         docStoreConn = rag.utils.es_conn.ESConnection()

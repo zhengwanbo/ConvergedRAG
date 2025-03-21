@@ -10,7 +10,9 @@ from peewee import EnclosedNodeList
 from peewee import Entity
 from peewee import Node
 from peewee import NodeList
+from peewee import CharField
 from peewee import TextField
+
 
 #from peewee import compiler
 import logging
@@ -101,14 +103,6 @@ class OracleDatabase(Database):
             logger.error("缺少必要的连接参数，无法生成 DSN 字符串。")
 
         conn = oracle.connect(dsn)
-        #conn = oracle.create_pool(
-        #    user= user,
-        #    password= password,
-        #    dsn="{}:{}/{}".format(host, port, db),
-        #    min=1,
-        #    max=50,
-        #    increment=1,
-        #)
 
         return conn
 
@@ -454,6 +448,12 @@ class OracleMigrator(SchemaMigrator):
 
     def drop_not_null(self, table, column_name):
         # Oracle 使用 MODIFY 来修改列属性
+        operation = 'MODIFY %s NULL' % column_name
+        return self._alter_table(table, operation)
+
+        operation = 'MODIFY %s NOT NULL' % column_name
+        return self._alter_table(table, operation)
+
         operation = 'MODIFY %s %s' % (column, field.get_modifiers()[0])
         return self._alter_table(table, operation)
 

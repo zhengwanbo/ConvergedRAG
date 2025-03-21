@@ -239,12 +239,13 @@ class XInferenceRerank(Base):
             rank[d["index"]] = d["relevance_score"]
         return rank, token_count
 
+
 class OllamaRerank(Base):
     def __init__(self, key="xxxxxxx", model_name="", base_url=""):
-        if base_url.find("/v1") == -1:
-            base_url = urljoin(base_url, "/v1/rerank")
+        if base_url.find("/api") == -1:
+            base_url = urljoin(base_url, "/api/rerank")
         if base_url.find("/rerank") == -1:
-            base_url = urljoin(base_url, "/v1/rerank")
+            base_url = urljoin(base_url, "/api/rerank")
         self.model_name = model_name
         self.base_url = base_url
         self.headers = {
