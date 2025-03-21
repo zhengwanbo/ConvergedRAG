@@ -393,7 +393,7 @@ class OracleMigrator(SchemaMigrator):
             return True
         except Exception as e:
             logger.debug(f"Error executing statement: {e}")
-            self.db.rollback()
+            self.database.rollback()
             return False
 
     def get_column_type(self, field):
@@ -447,12 +447,6 @@ class OracleMigrator(SchemaMigrator):
 
     def drop_not_null(self, table, column_name):
         # Oracle 使用 MODIFY 来修改列属性
-        operation = 'MODIFY %s NULL' % column_name
-        return self._alter_table(table, operation)
-
-        operation = 'MODIFY %s NOT NULL' % column_name
-        return self._alter_table(table, operation)
-
         operation = 'MODIFY %s %s' % (column, field.get_modifiers()[0])
         return self._alter_table(table, operation)
 

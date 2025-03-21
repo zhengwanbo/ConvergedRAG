@@ -27,6 +27,7 @@ from nltk import word_tokenize
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from api.utils.file_utils import get_project_base_directory
 
+logging.basicConfig(level=logging.DEBUG)
 
 class RagTokenizer:
     def key_(self, line):
@@ -62,6 +63,10 @@ class RagTokenizer:
         self.DEBUG = debug
         self.DENOMINATOR = 1000000
         self.DIR_ = os.path.join(get_project_base_directory(), "rag/res", "huqie")
+
+        # 添加停用词列表
+        self.stopwords = set()
+        self._load_stopwords()
 
         self.stemmer = PorterStemmer()
         self.lemmatizer = WordNetLemmatizer()
@@ -288,6 +293,25 @@ class RagTokenizer:
             txt_lang_pairs.append((a[s: e], zh))
         return txt_lang_pairs
 
+    def _load_stopwords(self):
+        """加载停用词表"""
+        try:
+            from nltk.corpus import stopwords
+            self.stopwords = set(stopwords.words('english'))
+            # 如果需要中文停用词，可以添加中文停用词表
+            # with open('path/to/chinese_stopwords.txt', 'r', encoding='utf-8') as f:
+            #     self.stopwords.update([line.strip() for line in f])
+        except LookupError:
+            import nltk
+            nltk.download('stopwords')
+            from nltk.corpus import stopwords
+            self.stopwords = set(stopwords.words('english'))
+
+    def _remove_stopwords(self, tokens):
+        """过滤停用词"""
+        return [token for token in tokens if token.lower() not in self.stopwords]
+
+
     def tokenize(self, line):
         line = re.sub(r"\W+", " ", line)
         line = self._strQ2B(line).lower()
@@ -297,7 +321,11 @@ class RagTokenizer:
         res = []
         for L,lang in arr:
             if not lang:
-                res.extend([self.stemmer.stem(self.lemmatizer.lemmatize(t)) for t in word_tokenize(L)])
+                #res.extend([self.stemmer.stem(self.lemmatizer.lemmatize(t)) for t in word_tokenize(L)])
+                tokens = [self.stemmer.stem(self.lemmatizer.lemmatize(t)) for t in word_tokenize(L)]
+                # 添加停用词过滤
+                ptokens = self._remove_stopwords(tokens)
+                res.extend(ptokens)
                 continue
             if len(L) < 2 or re.match(
                     r"[a-z\.-]+$", L) or re.match(r"[0-9\.-]+$", L):
