@@ -278,15 +278,15 @@ class TaskService(CommonService):
                 ).execute()
             return
 
-        #with DB.lock("update_progress", -1):
-        if info["progress_msg"]:
-            task = cls.model.get_by_id(id)
-            progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
-            cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
-        if "progress" in info:
-            cls.model.update(progress=info["progress"]).where(
-                cls.model.id == id
-            ).execute()
+        with DB.lock("update_progress", -1):
+            if info["progress_msg"]:
+                task = cls.model.get_by_id(id)
+                progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
+                cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
+            if "progress" in info:
+                cls.model.update(progress=info["progress"]).where(
+                    cls.model.id == id
+                ).execute()
 
 
 def queue_tasks(doc: dict, bucket: str, name: str, priority: int):

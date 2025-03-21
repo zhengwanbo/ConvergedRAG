@@ -24,7 +24,7 @@ from api.utils.api_utils import get_json_result, server_error_response, validate
 from agent.canvas import Canvas
 from peewee import MySQLDatabase, PostgresqlDatabase
 from api.db.db_models import APIToken
-
+import oracledb
 
 @manager.route('/templates', methods=['GET'])  # noqa: F821
 @login_required
@@ -258,9 +258,11 @@ def test_db_connect():
         if req["db_type"] in ["mysql", "mariadb"]:
             db = MySQLDatabase(req["database"], user=req["username"], host=req["host"], port=req["port"],
                                password=req["password"])
+            db.connect()
         elif req["db_type"] == 'postgresql':
             db = PostgresqlDatabase(req["database"], user=req["username"], host=req["host"], port=req["port"],
                                     password=req["password"])
+            db.connect()
         elif req["db_type"] == 'mssql':
             import pyodbc
             connection_string = (
@@ -274,10 +276,19 @@ def test_db_connect():
             cursor = db.cursor()
             cursor.execute("SELECT 1")
             cursor.close()
+        elif req["db_type"] == 'oracle':
+            dsn = oracledb.makedsn(req["host"], req["port"], service_name=req["database"])
+            db = oracledb.connect(
+                user=req["username"],
+                password=req["password"],
+                dsn=dsn
+            )
+            cursor = db.cursor()
+            cursor.execute("SELECT 1 from dual")
+            cursor.close()
         else:
             return server_error_response("Unsupported database type.")
-        if req["db_type"] != 'mssql':
-            db.connect()
+
         db.close()
         
         return get_json_result(data="Database Connection Successful!")
