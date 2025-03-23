@@ -582,6 +582,7 @@ class OracleConnection(DocStoreConnection):
                             params[k] = v
                 
                 # 执行更新
+                logger.debug(f"ORACLE update SQL  {update_sql}, {params}.")
                 cursor.execute(update_sql, params)
                 conn.commit()
                 return True

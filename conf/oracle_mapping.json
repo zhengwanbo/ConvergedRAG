@@ -10,7 +10,7 @@
         "title_sm_tks": {"type": "varchar2(1024)", "default": ""},
         "name_kwd": {"type": "varchar2(1024)", "default": ""},
         "important_kwd": {"type": "varchar2(1024)", "default": ""},
-        "tag_kwd": {"type": "CLOB", "default": ""},
+        "tag_kwd": {"type": "varchar2(1024)", "default": ""},
         "important_tks": {"type": "varchar2(1024)", "default": ""},
         "question_kwd": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
         "question_tks": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
@@ -32,10 +32,10 @@
         "pagerank_fea": {"type": "integer", "default":  0},
         "tag_feas": {"type": "varchar2(1024)", "default":  ""},
 
-        "from_entity_kwd": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
-        "to_entity_kwd": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
-        "entity_kwd": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
-        "entity_type_kwd": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
+        "from_entity_kwd": {"type": "varchar2(1024)", "default": ""},
+        "to_entity_kwd": {"type": "varchar2(1024)", "default": ""},
+        "entity_kwd": {"type": "varchar2(1024)", "default": ""},
+        "entity_type_kwd": {"type": "varchar2(1024)", "default": ""},
         "source_id": {"type": "varchar2(50)", "default": ""},
         "n_hop_with_weight": {"type": "varchar2(1024)", "default": ""},
         "removed_kwd": {"type": "varchar2(1024)", "default": ""}
