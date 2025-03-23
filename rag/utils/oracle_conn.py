@@ -296,7 +296,9 @@ class OracleConnection(DocStoreConnection):
                     for col in columns:
                         value = doc[col]
                         # 对向量字段进行特殊处理
-                        if col.startswith('q_') and col.endswith('_vec') and isinstance(value, list):
+                        if col.startswith('q_') and col.endswith('_vec'):
+                            if hasattr(value, 'tolist'):  # 处理numpy数组
+                                value = value.tolist()
                             row_data[col] = f'{json.dumps(value)}'  # 转换为JSON字符串并添加单引号
                         else:
                             row_data[col] = value
@@ -537,22 +539,28 @@ class OracleConnection(DocStoreConnection):
         logger.info(f"ORACLE search final result: {total_hits_count}")
         return results, total_hits_count
 
-    def update(
-            self,
-            indexName: str,
-            knowledgebaseId: str,
-            condition: Dict[str, Any],
-            updates: Dict[str, Any]
-    ) -> bool:
+    def update(self, 
+               condition: Dict[str, Any], 
+               newValue:Dict[str, Any], 
+               indexName: str, 
+               knowledgebaseId: str
+        ) -> bool:
         """更新文档"""
         try:
             table_name = f"{indexName}_{knowledgebaseId}"
             with self.conn_pool.acquire() as conn:
                 cursor = conn.cursor()
                 
+                # 数据预处理
+                updates = copy.deepcopy(newValue)
+                for k, v in updates.items():
+                    if isinstance(v, list):
+                        if k in ["important_kwd", "question_kwd", "entities_kwd", "tag_kwd", "source_id"]:
+                            updates[k] = "###".join(v)
+               
                 # 构建SET子句
                 set_clause = ", ".join([f"{k} = :{k}" for k in updates.keys()])
-                
+
                 # 构建WHERE子句
                 where_clause = equivalent_condition_to_str(condition)
                 
