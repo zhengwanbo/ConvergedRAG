@@ -10,6 +10,7 @@ from rag.settings import TAG_FLD, PAGERANK_FLD
 from rag.utils import singleton
 from rag.nlp import is_english, rag_tokenizer
 from api.utils.file_utils import get_project_base_directory
+from numpy import array
 from rag.utils.doc_store_conn import (
     DocStoreConnection,
     MatchExpr,
@@ -347,8 +348,16 @@ class OracleConnection(DocStoreConnection):
                     row = cursor.fetchone()
                     if row:
                         # 将结果转换为字典
+                        row_dict = {}
                         columns = [col[0] for col in cursor.description]
-                        result = dict(zip(columns, row))
+                        for idx, value in enumerate(row):
+                            if isinstance(value, oracledb.LOB):  # 如果是LOB类型
+                                 row_dict[columns[idx]] = value.read()  # 读取LOB内容
+                            else:
+                                 row_dict[columns[idx]] = value
+
+                        #result = dict(zip(columns, row))
+                        result = row_dict
                         break
                         
         if result:
@@ -356,7 +365,7 @@ class OracleConnection(DocStoreConnection):
             for field in ["important_kwd", "question_kwd", "entities_kwd", "tag_kwd", "source_id"]:
                 if field in result and isinstance(result[field], str):
                     result[field] = result[field].split("###")
-            
+
             # 处理position_int字段
             if "position_int" in result and isinstance(result["position_int"], str):
                 hex_values = result["position_int"].split("_")
@@ -369,7 +378,16 @@ class OracleConnection(DocStoreConnection):
             for field in ["page_num_int", "top_int"]:
                 if field in result and isinstance(result[field], str):
                     result[field] = [int(hex_val, 16) for hex_val in result[field].split("_")]
-        
+
+            # 处理所有以Q_开头，_VEC结尾的向量字段
+            vec_pattern = re.compile(r'^Q_.*_VEC$')
+            for field in result:
+                if vec_pattern.match(field):
+                    if hasattr(result[field], 'tolist'):  # 处理numpy数组
+                        result[field] = json.dumps(result[field].tolist())
+                    elif isinstance(result[field], (list, array)):  # 处理列表或array类型
+                        result[field] = json.dumps(list(result[field]))
+                                
         #logger.debug(f"ORACLE get result: {result}")
         return result    
         
