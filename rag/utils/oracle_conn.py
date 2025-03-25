@@ -449,6 +449,7 @@ class OracleConnection(DocStoreConnection):
                         vector_similarity_weight = 0.5
                         for matchExpr in matchExprs:
                             if isinstance(matchExpr, MatchTextExpr):
+                                extra_info = matchExpr.extra_info
                                 # 处理字段权重
                                 fields = []
                                 for field in matchExpr.fields:
@@ -467,7 +468,7 @@ class OracleConnection(DocStoreConnection):
                                 query_text = re.sub(r'\^[0-9.]+', '', query_text)  # 去掉权重
                                 query_text = re.sub(r'~[0-9]+', '', query_text)  # 去掉模糊匹配
                                 # 在括号之间添加OR
-                                query_text = re.sub(r'\)\s*\(', ') OR (', query_text)
+                                query_text = re.sub(r'\)*[0-9]+\s*\(', ') ACCUM (', query_text)
                                 query_text = f"({query_text})"
 
                                 # 构建CONTAINS条件
@@ -478,11 +479,28 @@ class OracleConnection(DocStoreConnection):
                                         1
                                     ) > 0
                                 """)
-                                
+                                #add by walter jin
+                                oracle_query_text = ""
+                                tms = extra_info["tms"]
+                                tms_total_weight = extra_info["tms_total_weight"]
+                                syns = extra_info["syns"]
+                                syns_total_weight = extra_info["syns_total_weight"]
+                                tms_condition = []
+                                if len(tms)>0:
+                                    for k_v in tms:
+                                        for k,v in k_v.items():
+                                            tms_condition.append(f"({k})*{v}")
+                                if int(tms_total_weight)>-1:
+                                    oracle_query_text = f"(%s)*{tms_total_weight} " % (" ACCUM ".join(tms_condition), )
+                                    if len(syns)>0:
+                                        oracle_query_text = oracle_query_text + f" ACCUM ({syns})*{syns_total_weight}"
+                                else:
+                                    oracle_query_text = " ACCUM ".join(tms_condition)
+
                                 # 添加排序
                                 order_by_clause = "ORDER BY SCORE(1) DESC"
-                                
-                                params["text_query"] = query_text
+                                #params["text_query"] = query_text
+                                params["text_query"] = oracle_query_text
                                 logger.info(f"Oracle search MatchTextExpr: {json.dumps(matchExpr.__dict__)}")
                                 logger.info(f"ORACLE search MatchTextExpr Params: {params}")
 
