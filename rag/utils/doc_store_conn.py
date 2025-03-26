@@ -63,11 +63,18 @@ class MatchTextExpr(ABC):
         matching_text: str,
         topn: int,
         extra_options: dict = dict(),
+        #add by walter jin
+        extra_info: dict = {"question":"",
+                          "tms":[],
+                          "tms_total_weight":-1,
+                          "syns":[],
+                          "syns_total_weight":-1},
     ):
         self.fields = fields
         self.matching_text = matching_text
         self.topn = topn
         self.extra_options = extra_options
+        self.extra_info = extra_info
 
 
 class MatchDenseExpr(ABC):
