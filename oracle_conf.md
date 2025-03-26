@@ -24,14 +24,15 @@ alter session set container=freepdb1;
 create user ragvector identified by ragvector DEFAULT TABLESPACE users quota unlimited on users;
 grant DB_DEVELOPER_ROLE to ragvector;
 
-BEGIN
-	CTX_DDL.CREATE_PREFERENCE('sys.my_chinese_vgram_lexer', 'CHINESE_VGRAM_LEXER');
-END;
-/
 
 -- 验证文本检索index是否可以成功
 
 sqlplus ragvector/ragvector@freepdb1
+
+BEGIN
+	CTX_DDL.CREATE_PREFERENCE('my_chinese_vgram_lexer', 'CHINESE_VGRAM_LEXER');
+END;
+/
 
 CREATE TABLE IF NOT EXISTS ttt (
     id varchar2(100)
@@ -57,7 +58,7 @@ name: 'rag_flow'
 user: 'conrag'
 password: 'conrag'
 db: 'freepdb1'
-host: '192.168.17.33'
+host: 'localhost'
 port: 1521
 max_connections: 100
 stale_timeout: 30
@@ -67,7 +68,7 @@ name: 'rag_vector'
 user: 'ragvector'
 password: 'ragvector'
 db: 'freepdb1'
-host: '192.168.17.33'
+host: 'localhost'
 port: 1521
 max_connections: 100
 stale_timeout: 30
