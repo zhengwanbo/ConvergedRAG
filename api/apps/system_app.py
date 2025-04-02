@@ -210,6 +210,7 @@ def new_token():
             "create_date": datetime_format(datetime.now()),
             "update_time": None,
             "update_date": None,
+            "dialog_id": "unlink"
         }
 
         if not APITokenService.save(**obj):
