@@ -80,10 +80,14 @@ def completion(tenant_id, agent_id, question, session_id=None, stream=True, **kw
         conv = {
             "id": session_id,
             "dialog_id": cvs.id,
-            "user_id": kwargs.get("user_id", "") if isinstance(kwargs, dict) else "",
+            "user_id": tenant_id, #kwargs.get("user_id", "") if isinstance(kwargs, dict) else "",
             "message": [{"role": "assistant", "content": canvas.get_prologue(), "created_at": time.time()}],
             "source": "agent",
-            "dsl": cvs.dsl
+            "dsl": cvs.dsl,
+            "tokens": 0,
+            "duration": 0,
+            "round": 0,
+            "thumb_up": 0
         }
         API4ConversationService.save(**conv)
 
