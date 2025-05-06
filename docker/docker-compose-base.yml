@@ -1,31 +1,22 @@
 services:
-  mysql:
-    # mysql:5.7 linux/arm64 image is unavailable.
-    image: mysql:8.0.39
-    container_name: ragflow-mysql
-    env_file: .env
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
-      - TZ=${TIMEZONE}
-    command:
-      --max_connections=1000
-      --character-set-server=utf8mb4
-      --collation-server=utf8mb4_unicode_ci
-      --default-authentication-plugin=mysql_native_password
-      --tls_version="TLSv1.2,TLSv1.3"
-      --init-file /data/application/init.sql
-    ports:
-      - ${MYSQL_PORT}:3306
+  oracle:
+    image: container-registry.oracle.com/database/free:latest
+    profiles:
+      - oracle
+    restart: always
     volumes:
-      - mysql_data:/var/lib/mysql
-      - ./init.sql:/data/application/init.sql
+      - source: oradata
+        type: volume
+        target: /opt/oracle/oradata
+      - ./startupscripts:/opt/oracle/scripts/startup
+    environment:
+      ORACLE_PWD: ${ORACLE_PWD:-ConRag123}
+      ORACLE_CHARACTERSET: ${ORACLE_CHARACTERSET:-AL32UTF8}
+    env_file: .env
+    ports:
+      - ${ORCL_PORT}:1521
     networks:
       - ragflow
-    healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-uroot", "-p${MYSQL_PASSWORD}"]
-      interval: 10s
-      timeout: 10s
-      retries: 3
     restart: on-failure
 
   minio:

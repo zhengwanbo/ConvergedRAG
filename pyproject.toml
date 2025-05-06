@@ -67,7 +67,7 @@ dependencies = [
     "oracledb==3.0.0",
     "pandas>=2.2.0,<3.0.0",
     "pdfplumber==0.10.4",
-    "peewee==3.17.1",
+    "peewee==3.17.9",
     "pillow==10.4.0",
     "protobuf==5.27.2",
     "psycopg2-binary==2.9.9",

@@ -27,7 +27,7 @@ from api.db.db_models import DB, DataBaseModel
 
 @DB.connection_context()
 def bulk_insert_into_db(model, data_source, replace_on_conflict=False):
-    DB.create_tables([model])
+    #DB.create_tables([model])
 
     for i, data in enumerate(data_source):
         current_time = current_timestamp() + i

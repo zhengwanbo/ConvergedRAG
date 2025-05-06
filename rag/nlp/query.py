@@ -22,7 +22,7 @@ from collections import defaultdict
 
 from rag.utils.doc_store_conn import MatchTextExpr
 from rag.nlp import rag_tokenizer, term_weight, synonym
-
+import numpy as np
 
 class FulltextQueryer:
     def __init__(self):
@@ -127,16 +127,35 @@ class FulltextQueryer:
 
         txt = FulltextQueryer.rmWWW(txt)
         qs, keywords = [], []
+        temp_variable = self.tw.split(txt)[:256]
         for tt in self.tw.split(txt)[:256]:  # .split():
             if not tt:
                 continue
             keywords.append(tt)
             twts = self.tw.weights([tt])
+            #add by walter jin
+            # oracle Weight Range 0.1~10
+            # so here : Min-Max Normalization
+            normalization_weihht = {}
+            weights_arr = [item[1] for item in twts]
+            def normalize_to_range(arr, new_min=1, new_max=10):
+                old_min, old_max = np.min(arr), np.max(arr)
+                return (arr - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
+            normalization_arr = normalize_to_range(weights_arr)
+            for index in range(0,len(weights_arr)):
+                normalization_weihht[weights_arr[index]] = normalization_arr[index]
+
             syns = self.syn.lookup(tt)
             if syns and len(keywords) < 32:
                 keywords.extend(syns)
             logging.debug(json.dumps(twts, ensure_ascii=False))
             tms = []
+            # add by walter jin
+            extra_info = {"question":txt,
+                          "tms":[],
+                          "tms_total_weight":-1,
+                          "syns":[],
+                          "syns_total_weight":-1}
             for tk, w in sorted(twts, key=lambda x: x[1] * -1):
                 sm = (
                     rag_tokenizer.fine_grained_tokenize(tk).split()
@@ -169,6 +188,8 @@ class FulltextQueryer:
                     break
 
                 tk = FulltextQueryer.subSpecialChar(tk)
+                # add by walter jin
+                temp = tk
                 if tk.find(" ") > 0:
                     tk = '"%s"' % tk
                 if tk_syns:
@@ -177,11 +198,21 @@ class FulltextQueryer:
                     tk = f'{tk} OR "%s" OR ("%s"~2)^0.5' % (" ".join(sm), " ".join(sm))
                 if tk.strip():
                     tms.append((tk, w))
+                    # add by walter jin
+                    if tk_syns or sm:
+                        if tk_syns:
+                            extra_info["tms"].append( {f"{temp} ACCUM %s" % (" ACCUM ".join(tk_syns)).replace('"',''):normalization_weihht[w]})
+                    else:
+                        extra_info["tms"].append({tk:normalization_weihht[w]})
+
+
 
             tms = " ".join([f"({t})^{w}" for t, w in tms])
 
             if len(twts) > 1:
                 tms += ' ("%s"~2)^1.5' % rag_tokenizer.tokenize(tt)
+                # short phrase can't be used in Oracle Full text search
+                #another_tms.append({rag_tokenizer.tokenize(tt): 1.5})
 
             syns = " OR ".join(
                 [
@@ -190,15 +221,26 @@ class FulltextQueryer:
                     for s in syns
                 ]
             )
+            #add by walter jin
+            extra_syns = " ACCUM ".join(
+                [
+                    '"%s"'
+                    % rag_tokenizer.tokenize(FulltextQueryer.subSpecialChar(s))
+                    for s in syns
+                ]
+            )
             if syns and tms:
                 tms = f"({tms})^5 OR ({syns})^0.7"
+                extra_info["tms_total_weight"] = 5
+                extra_info["syns"] = extra_syns
+                extra_info["syns_total_weight"] = 0.7
 
             qs.append(tms)
 
         if qs:
             query = " OR ".join([f"({t})" for t in qs if t])
             return MatchTextExpr(
-                self.query_fields, query, 100, {"minimum_should_match": min_match}
+                self.query_fields, query, 100, {"minimum_should_match": min_match},extra_info
             ), keywords
         return None, keywords
 

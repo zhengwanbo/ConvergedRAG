@@ -26,7 +26,7 @@ from hanziconv import HanziConv
 from nltk import word_tokenize
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from api.utils.file_utils import get_project_base_directory
-
+from nltk.corpus import stopwords
 
 class RagTokenizer:
     def key_(self, line):
@@ -63,6 +63,10 @@ class RagTokenizer:
         self.DENOMINATOR = 1000000
         self.DIR_ = os.path.join(get_project_base_directory(), "rag/res", "huqie")
 
+        # 添加停用词列表
+        self.stopwords = set()
+        self._load_stopwords()
+
         self.stemmer = PorterStemmer()
         self.lemmatizer = WordNetLemmatizer()
 
@@ -86,6 +90,25 @@ class RagTokenizer:
 
         # load data from dict file and save to trie file
         self.loadDict_(self.DIR_ + ".txt")
+
+    def _load_stopwords(self):
+        """加载停用词表"""
+        try:
+            from nltk.corpus import stopwords
+            self.stopwords = set(stopwords.words('chinese'))
+            # 如果需要中文停用词，可以添加中文停用词表
+            # with open('path/to/chinese_stopwords.txt', 'r', encoding='utf-8') as f:
+            #     self.stopwords.update([line.strip() for line in f])
+        except LookupError:
+            import nltk
+            nltk.download('stopwords')
+            from nltk.corpus import stopwords
+            self.stopwords = set(stopwords.words('chinese'))
+
+    def _remove_stopwords(self, tokens):
+        """过滤停用词"""
+        return [token for token in tokens if token.lower() not in self.stopwords]
+
 
     def loadUserDict(self, fnm):
         try:
@@ -319,6 +342,25 @@ class RagTokenizer:
             txt_lang_pairs.append((a[s: e], zh))
         return txt_lang_pairs
 
+    def _load_stopwords(self):
+        """加载停用词表"""
+        try:
+            from nltk.corpus import stopwords
+            self.stopwords = set(stopwords.words('english'))
+            # 如果需要中文停用词，可以添加中文停用词表
+            # with open('path/to/chinese_stopwords.txt', 'r', encoding='utf-8') as f:
+            #     self.stopwords.update([line.strip() for line in f])
+        except LookupError:
+            import nltk
+            nltk.download('stopwords')
+            from nltk.corpus import stopwords
+            self.stopwords = set(stopwords.words('english'))
+
+    def _remove_stopwords(self, tokens):
+        """过滤停用词"""
+        return [token for token in tokens if token.lower() not in self.stopwords]
+
+
     def tokenize(self, line):
         line = re.sub(r"\W+", " ", line)
         line = self._strQ2B(line).lower()
@@ -388,7 +430,7 @@ class RagTokenizer:
                 res.append(" ".join(self.sortTks_(tkslist)[0][0]))
 
         res = " ".join(res)
-        logging.debug("[TKS] {}".format(self.merge_(res)))
+        #logging.debug("[TKS] {}".format(self.merge_(res)))
         return self.merge_(res)
 
     def fine_grained_tokenize(self, tks):
