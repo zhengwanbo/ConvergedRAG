@@ -13,16 +13,20 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
-import logging
 import inspect
+import logging
+import operator
 import os
 import sys
 import typing
-import operator
+import time
 from enum import Enum
 from functools import wraps
-from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
+import hashlib
+
 from flask_login import UserMixin
+from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
+from peewee import BigIntegerField, BooleanField, CharField, CompositeKey, DateTimeField, Field, FloatField, IntegerField, Metadata, Model, TextField
 from playhouse.migrate import MySQLMigrator, PostgresqlMigrator, migrate
 from peewee import (
     BigIntegerField, BooleanField, CharField,
@@ -34,7 +38,8 @@ from api.db.oracle_ext import OracleDatabase
 from api.db.oracle_ext import PooledOracleDatabase
 from api.db.oracle_ext import OracleMigrator
 
-import oracledb as oracle
+from api import settings, utils
+from api.db import ParserType, SerializedType
 
 from api.db import SerializedType, ParserType
 from api import settings
@@ -42,7 +47,7 @@ from api import utils
 import logging
 
 logger = logging.getLogger('db_model')
-logger.setLevel(logging.DEBUG)
+#logger.setLevel(logging.DEBUG)
 
 def singleton(cls, *args, **kw):
     instances = {}
@@ -57,13 +62,7 @@ def singleton(cls, *args, **kw):
 
 
 CONTINUOUS_FIELD_TYPE = {IntegerField, FloatField, DateTimeField}
-AUTO_DATE_TIMESTAMP_FIELD_PREFIX = {
-    "create",
-    "start",
-    "end",
-    "update",
-    "read_access",
-    "write_access"}
+AUTO_DATE_TIMESTAMP_FIELD_PREFIX = {"create", "start", "end", "update", "read_access", "write_access"}
 
 
 class TextFieldType(Enum):
@@ -107,8 +106,7 @@ class ListField(JSONField):
 
 
 class SerializedField(LongTextField):
-    def __init__(self, serialized_type=SerializedType.PICKLE,
-                 object_hook=None, object_pairs_hook=None, **kwargs):
+    def __init__(self, serialized_type=SerializedType.PICKLE, object_hook=None, object_pairs_hook=None, **kwargs):
         self._serialized_type = serialized_type
         self._object_hook = object_hook
         self._object_pairs_hook = object_pairs_hook
@@ -122,8 +120,7 @@ class SerializedField(LongTextField):
                 return None
             return utils.json_dumps(value, with_type=True)
         else:
-            raise ValueError(
-                f"the serialized type {self._serialized_type} is not supported")
+            raise ValueError(f"the serialized type {self._serialized_type} is not supported")
 
     def python_value(self, value):
         if self._serialized_type == SerializedType.PICKLE:
@@ -131,11 +128,9 @@ class SerializedField(LongTextField):
         elif self._serialized_type == SerializedType.JSON:
             if value is None:
                 return {}
-            return utils.json_loads(
-                value, object_hook=self._object_hook, object_pairs_hook=self._object_pairs_hook)
+            return utils.json_loads(value, object_hook=self._object_hook, object_pairs_hook=self._object_pairs_hook)
         else:
-            raise ValueError(
-                f"the serialized type {self._serialized_type} is not supported")
+            raise ValueError(f"the serialized type {self._serialized_type} is not supported")
 
 
 def is_continuous_field(cls: typing.Type) -> bool:
@@ -160,7 +155,7 @@ def auto_date_timestamp_db_field():
 
 
 def remove_field_name_prefix(field_name):
-    return field_name[2:] if field_name.startswith('f_') else field_name
+    return field_name[2:] if field_name.startswith("f_") else field_name
 
 
 class BaseModel(Model):
@@ -174,20 +169,19 @@ class BaseModel(Model):
         return self.to_dict()
 
     def to_dict(self):
-        return self.__dict__['__data__']
+        return self.__dict__["__data__"]
 
     def to_human_model_dict(self, only_primary_with: list = None):
-        model_dict = self.__dict__['__data__']
+        model_dict = self.__dict__["__data__"]
 
         if not only_primary_with:
-            return {remove_field_name_prefix(
-                k): v for k, v in model_dict.items()}
+            return {remove_field_name_prefix(k): v for k, v in model_dict.items()}
 
         human_model_dict = {}
         for k in self._meta.primary_key.field_names:
             human_model_dict[remove_field_name_prefix(k)] = model_dict[k]
         for k in only_primary_with:
-            human_model_dict[k] = model_dict[f'f_{k}']
+            human_model_dict[k] = model_dict[f"f_{k}"]
         return human_model_dict
 
     @property
@@ -196,8 +190,7 @@ class BaseModel(Model):
 
     @classmethod
     def get_primary_keys_name(cls):
-        return cls._meta.primary_key.field_names if isinstance(cls._meta.primary_key, CompositeKey) else [
-            cls._meta.primary_key.name]
+        return cls._meta.primary_key.field_names if isinstance(cls._meta.primary_key, CompositeKey) else [cls._meta.primary_key.name]
 
     @classmethod
     def getter_by(cls, attr):
@@ -207,7 +200,7 @@ class BaseModel(Model):
     def query(cls, reverse=None, order_by=None, **kwargs):
         filters = []
         for f_n, f_v in kwargs.items():
-            attr_name = '%s' % f_n
+            attr_name = "%s" % f_n
             if not hasattr(cls, attr_name) or f_v is None:
                 continue
             if type(f_v) in {list, set}:
@@ -215,22 +208,17 @@ class BaseModel(Model):
                 if is_continuous_field(type(getattr(cls, attr_name))):
                     if len(f_v) == 2:
                         for i, v in enumerate(f_v):
-                            if isinstance(
-                                    v, str) and f_n in auto_date_timestamp_field():
+                            if isinstance(v, str) and f_n in auto_date_timestamp_field():
                                 # time type: %Y-%m-%d %H:%M:%S
                                 f_v[i] = utils.date_string_to_timestamp(v)
                         lt_value = f_v[0]
                         gt_value = f_v[1]
                         if lt_value is not None and gt_value is not None:
-                            filters.append(
-                                cls.getter_by(attr_name).between(
-                                    lt_value, gt_value))
+                            filters.append(cls.getter_by(attr_name).between(lt_value, gt_value))
                         elif lt_value is not None:
-                            filters.append(
-                                operator.attrgetter(attr_name)(cls) >= lt_value)
+                            filters.append(operator.attrgetter(attr_name)(cls) >= lt_value)
                         elif gt_value is not None:
-                            filters.append(
-                                operator.attrgetter(attr_name)(cls) <= gt_value)
+                            filters.append(operator.attrgetter(attr_name)(cls) <= gt_value)
                 else:
                     filters.append(operator.attrgetter(attr_name)(cls) << f_v)
             else:
@@ -241,11 +229,9 @@ class BaseModel(Model):
                 if not order_by or not hasattr(cls, f"{order_by}"):
                     order_by = "create_time"
                 if reverse is True:
-                    query_records = query_records.order_by(
-                        cls.getter_by(f"{order_by}").desc())
+                    query_records = query_records.order_by(cls.getter_by(f"{order_by}").desc())
                 elif reverse is False:
-                    query_records = query_records.order_by(
-                        cls.getter_by(f"{order_by}").asc())
+                    query_records = query_records.order_by(cls.getter_by(f"{order_by}").asc())
             return [query_record for query_record in query_records]
         else:
             return []
@@ -253,8 +239,7 @@ class BaseModel(Model):
     @classmethod
     def insert(cls, __data=None, **insert):
         if isinstance(__data, dict) and __data:
-            __data[cls._meta.combined["create_time"]
-            ] = utils.current_timestamp()
+            __data[cls._meta.combined["create_time"]] = utils.current_timestamp()
         if insert:
             insert["create_time"] = utils.current_timestamp()
 
@@ -267,24 +252,18 @@ class BaseModel(Model):
         if not normalized:
             return {}
 
-        normalized[cls._meta.combined["update_time"]
-        ] = utils.current_timestamp()
+        normalized[cls._meta.combined["update_time"]] = utils.current_timestamp()
 
         for f_n in AUTO_DATE_TIMESTAMP_FIELD_PREFIX:
-            if {f"{f_n}_time", f"{f_n}_date"}.issubset(cls._meta.combined.keys()) and \
-                    cls._meta.combined[f"{f_n}_time"] in normalized and \
-                    normalized[cls._meta.combined[f"{f_n}_time"]] is not None:
-                normalized[cls._meta.combined[f"{f_n}_date"]] = utils.timestamp_to_date(
-                    normalized[cls._meta.combined[f"{f_n}_time"]])
+            if {f"{f_n}_time", f"{f_n}_date"}.issubset(cls._meta.combined.keys()) and cls._meta.combined[f"{f_n}_time"] in normalized and normalized[cls._meta.combined[f"{f_n}_time"]] is not None:
+                normalized[cls._meta.combined[f"{f_n}_date"]] = utils.timestamp_to_date(normalized[cls._meta.combined[f"{f_n}_time"]])
 
         return normalized
 
 
 class JsonSerializedField(SerializedField):
-    def __init__(self, object_hook=utils.from_dict_hook,
-                 object_pairs_hook=None, **kwargs):
-        super(JsonSerializedField, self).__init__(serialized_type=SerializedType.JSON, object_hook=object_hook,
-                                                  object_pairs_hook=object_pairs_hook, **kwargs)
+    def __init__(self, object_hook=utils.from_dict_hook, object_pairs_hook=None, **kwargs):
+        super(JsonSerializedField, self).__init__(serialized_type=SerializedType.JSON, object_hook=object_hook, object_pairs_hook=object_pairs_hook, **kwargs)
 
 
 class PooledDatabase(Enum):
@@ -305,8 +284,45 @@ class BaseDataBase:
         database_config = settings.DATABASE.copy()
         db_name = database_config.pop("name")
         self.database_connection = PooledDatabase[settings.DATABASE_TYPE.upper()].value(db_name, **database_config)
-        logging.info('database config: %s', database_config)
-        logging.info('init database on cluster mode successfully')
+        logging.info("init database on cluster mode successfully")
+
+
+def with_retry(max_retries=3, retry_delay=1.0):
+    """Decorator: Add retry mechanism to database operations
+
+    Args:
+        max_retries (int): maximum number of retries
+        retry_delay (float): initial retry delay (seconds), will increase exponentially
+
+    Returns:
+        decorated function
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exception = None
+            for retry in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as e:
+                    last_exception = e
+                    # get self and method name for logging
+                    self_obj = args[0] if args else None
+                    func_name = func.__name__
+                    lock_name = getattr(self_obj, 'lock_name', 'unknown') if self_obj else 'unknown'
+
+                    if retry < max_retries - 1:
+                        current_delay = retry_delay * (2 ** retry)
+                        logging.warning(f"{func_name} {lock_name} failed: {str(e)}, retrying ({retry+1}/{max_retries})")
+                        time.sleep(current_delay)
+                    else:
+                        logging.error(f"{func_name} {lock_name} failed after all attempts: {str(e)}")
+
+            if last_exception:
+                raise last_exception
+            return False
+        return wrapper
+    return decorator
 
 
 class PostgresDatabaseLock:
@@ -485,13 +501,18 @@ def init_database_tables(alter_fields=[]):
     for name, obj in members:
         if obj != DataBaseModel and issubclass(obj, DataBaseModel):
             table_objs.append(obj)
-            logging.debug(f"start create table {obj.__name__}")
-            try:
-                obj.create_table()
-                logging.debug(f"create table success: {obj.__name__}")
-            except Exception as e:
-                logging.exception(e)
-                create_failed_list.append(obj.__name__)
+
+            if not obj.table_exists():
+                logging.debug(f"start create table {obj.__name__}")
+                try:
+                    obj.create_table()
+                    logging.debug(f"create table success: {obj.__name__}")
+                except Exception as e:
+                    logging.exception(e)
+                    create_failed_list.append(obj.__name__)
+            else:
+                logging.debug(f"table {obj.__name__} already exists, skip creation.")
+
     if create_failed_list:
         logging.error(f"create tables failed: {create_failed_list}")
         raise Exception(f"create tables failed: {create_failed_list}")
@@ -500,7 +521,7 @@ def init_database_tables(alter_fields=[]):
 
 def fill_db_model_object(model_object, human_model_dict):
     for k, v in human_model_dict.items():
-        attr_name = '%s' % k
+        attr_name = "%s" % k
         if hasattr(model_object.__class__, attr_name):
             setattr(model_object, attr_name, v)
     return model_object
@@ -563,7 +584,7 @@ class Tenant(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     name = CharField(max_length=100, null=True, help_text="Tenant name", index=True)
     public_key = CharField(max_length=255, null=True, index=True)
-    llm_id = CharField(max_length=128, null=False, help_text="default llm ID", index=True)
+    llm_id = CharField(max_length=128, null=True, help_text="default llm ID", index=True)
     embd_id = CharField(
         max_length=128,
         null=False,
@@ -681,23 +702,15 @@ class LLM(DataBaseModel):
     fid = CharField(max_length=128, null=False, help_text="LLM factory id", index=True)
     max_tokens = IntegerField(default=0)
 
-    tags = CharField(
-        max_length=255,
-        null=False,
-        help_text="LLM, Text Embedding, Image2Text, Chat, 32k...",
-        index=True)
-    status = CharField(
-        max_length=1,
-        null=True,
-        help_text="is it validate(0: wasted, 1: validate)",
-        default="1",
-        index=True)
+    tags = CharField(max_length=255, null=False, help_text="LLM, Text Embedding, Image2Text, Chat, 32k...", index=True)
+    is_tools =  BooleanField(null=False, help_text="support tools", default=False)
+    status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
 
     def __str__(self):
         return self.llm_name
 
     class Meta:
-        primary_key = CompositeKey('fid', 'llm_name')
+        primary_key = CompositeKey("fid", "llm_name")
         db_table = "llm"
 
 
@@ -717,7 +730,7 @@ class TenantLLM(DataBaseModel):
         max_length=128,
         null=True,
         help_text="LLM name",
-        default="",
+        default="A",
         index=True)
     api_key = CharField(max_length=1024, null=True, help_text="API KEY", index=True)
     api_base = CharField(max_length=255, null=True, help_text="API Base")
@@ -729,7 +742,20 @@ class TenantLLM(DataBaseModel):
 
     class Meta:
         db_table = "tenant_llm"
-        primary_key = CompositeKey('tenant_id', 'llm_factory', 'llm_name')
+        primary_key = CompositeKey("tenant_id", "llm_factory", "llm_name")
+
+
+class TenantLangfuse(DataBaseModel):
+    tenant_id = CharField(max_length=32, null=False, primary_key=True)
+    secret_key = CharField(max_length=2048, null=False, help_text="SECRET KEY", index=True)
+    public_key = CharField(max_length=2048, null=False, help_text="PUBLIC KEY", index=True)
+    host = CharField(max_length=128, null=False, help_text="HOST", index=True)
+
+    def __str__(self):
+        return "Langfuse host" + self.host
+
+    class Meta:
+        db_table = "tenant_langfuse"
 
 
 class Knowledgebase(DataBaseModel):
@@ -828,7 +854,7 @@ class Document(DataBaseModel):
     progress_msg = TextField(
         null=True,
         help_text="process message",
-        default="")
+        default="A")
     process_begin_at = DateTimeField(null=True, index=True)
     process_duation = FloatField(default=0)
     meta_fields = JSONField(null=True, default={})
@@ -884,7 +910,7 @@ class File(DataBaseModel):
     source_type = CharField(
         max_length=128,
         null=True,
-        default="",
+        default="A",
         help_text="where dose this document come from", index=True)
 
     class Meta:
@@ -915,7 +941,7 @@ class Task(DataBaseModel):
     doc_id = CharField(max_length=32, null=False, index=True)
     from_page = IntegerField(default=0)
     to_page = IntegerField(default=100000000)
-    task_type = CharField(max_length=32, null=False, default="")
+    task_type = CharField(max_length=32, null=False, default="A")
     priority = IntegerField(default=0)
 
     begin_at = DateTimeField(null=True, index=True)
@@ -978,6 +1004,7 @@ class Dialog(DataBaseModel):
     rerank_id = CharField(
         max_length=128,
         null=False,
+        default="bge-m3",
         help_text="default rerank model ID")
 
     kb_ids = JSONField(null=False, default=[])
@@ -1007,7 +1034,7 @@ class Conversation(DataBaseModel):
 class APIToken(DataBaseModel):
     tenant_id = CharField(max_length=32, null=False, index=True)
     token = CharField(max_length=255, null=False, index=True)
-    dialog_id = CharField(max_length=32, null=False, index=True)
+    dialog_id = CharField(max_length=32, null=True, index=True)
     source = CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True)
     beta = CharField(max_length=255, null=True, index=True)
 
@@ -1039,6 +1066,7 @@ class UserCanvas(DataBaseModel):
     user_id = CharField(max_length=255, null=False, help_text="user_id", index=True)
     title = CharField(max_length=255, null=True, help_text="Canvas title")
 
+    permission = CharField(max_length=16, null=False, help_text="me|team", default="me", index=True)
     description = TextField(null=True, help_text="Canvas description")
     canvas_type = CharField(max_length=32, null=True, help_text="Canvas type", index=True)
     dsl = JSONField(null=True, default={})
@@ -1060,144 +1088,106 @@ class CanvasTemplate(DataBaseModel):
         db_table = "canvas_template"
 
 
+class UserCanvasVersion(DataBaseModel):
+    id = CharField(max_length=32, primary_key=True)
+    user_canvas_id = CharField(max_length=255, null=False, help_text="user_canvas_id", index=True)
+
+    title = CharField(max_length=255, null=True, help_text="Canvas title")
+    description = TextField(null=True, help_text="Canvas description")
+    dsl = JSONField(null=True, default={})
+
+    class Meta:
+        db_table = "user_canvas_version"
+
+
 def migrate_db():
-    with DB.transaction():
-        migrator = DatabaseMigrator[settings.DATABASE_TYPE.upper()].value(DB)
-        try:
-            migrate(
-                migrator.add_column('file', 'source_type', CharField(max_length=128, null=False, default="",
-                                                                     help_text="where dose this document come from",
-                                                                     index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column('tenant', 'rerank_id',
-                                    CharField(max_length=128, null=False, default="BAAI/bge-reranker-v2-m3",
-                                              help_text="default rerank model ID"))
+    migrator = DatabaseMigrator[settings.DATABASE_TYPE.upper()].value(DB)
+    try:
+        migrate(migrator.add_column("file", "source_type", CharField(max_length=128, null=False, default="A", help_text="where dose this document come from", index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("tenant", "rerank_id", CharField(max_length=128, null=False, default="BAAI/bge-reranker-v2-m3", help_text="default rerank model ID")))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("dialog", "rerank_id", CharField(max_length=128, null=False, default="", help_text="default rerank model ID")))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("dialog", "top_k", IntegerField(default=1024)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.alter_column_type("tenant_llm", "api_key", CharField(max_length=2048, null=True, help_text="API KEY", index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("api_token", "source", CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("tenant", "tts_id", CharField(max_length=256, null=True, help_text="default tts model ID", index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("api_4_conversation", "source", CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("task", "retry_count", IntegerField(default=0)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.alter_column_type("api_token", "dialog_id", CharField(max_length=32, null=True, index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("tenant_llm", "max_tokens", IntegerField(default=8192, index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("api_4_conversation", "dsl", JSONField(null=True, default={})))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("knowledgebase", "pagerank", IntegerField(default=0, index=False)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("api_token", "beta", CharField(max_length=255, null=True, index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("task", "digest", TextField(null=True, help_text="task digest", default="")))
+    except Exception:
+        pass
 
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column('dialog', 'rerank_id', CharField(max_length=128, null=False, default="",
-                                                                     help_text="default rerank model ID"))
-
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column('dialog', 'top_k', IntegerField(default=1024))
-
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.alter_column_type('tenant_llm', 'api_key',
-                                           CharField(max_length=1024, null=True, help_text="API KEY", index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column('api_token', 'source',
-                                    CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("tenant", "tts_id",
-                                    CharField(max_length=256, null=True, help_text="default tts model ID", index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column('api_4_conversation', 'source',
-                                    CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column('task', 'retry_count', IntegerField(default=0))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.alter_column_type('api_token', 'dialog_id',
-                                           CharField(max_length=32, null=True, index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("tenant_llm", "max_tokens", IntegerField(default=8192, index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("api_4_conversation", "dsl", JSONField(null=True, default={}))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("knowledgebase", "pagerank", IntegerField(default=0, index=False))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("api_token", "beta", CharField(max_length=255, null=True, index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("task", "digest", TextField(null=True, help_text="task digest", default=""))
-            )
-        except Exception:
-            pass
-
-        try:
-            migrate(
-                migrator.add_column("task", "chunk_ids", LongTextField(null=True, help_text="chunk ids", default=""))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("conversation", "user_id",
-                                    CharField(max_length=255, null=True, help_text="user_id", index=True))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("document", "meta_fields",
-                                    JSONField(null=True, default={}))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("task", "task_type",
-                                    CharField(max_length=32, null=False, default=""))
-            )
-        except Exception:
-            pass
-        try:
-            migrate(
-                migrator.add_column("task", "priority",
-                                    IntegerField(default=0))
-            )
-        except Exception:
-            pass
+    try:
+        migrate(migrator.add_column("task", "chunk_ids", LongTextField(null=True, help_text="chunk ids", default="")))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("conversation", "user_id", CharField(max_length=255, null=True, help_text="user_id", index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("document", "meta_fields", JSONField(null=True, default={})))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("task", "task_type", CharField(max_length=32, null=False, default="A")))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("task", "priority", IntegerField(default=0)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("user_canvas", "permission", CharField(max_length=16, null=False, help_text="me|team", default="me", index=True)))
+    except Exception:
+        pass
+    try:
+        migrate(migrator.add_column("llm", "is_tools", BooleanField(null=False, help_text="support tools", default=False)))
+    except Exception:
+        pass

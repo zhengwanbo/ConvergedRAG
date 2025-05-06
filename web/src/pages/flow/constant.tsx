@@ -2883,12 +2883,16 @@ export const QWeatherTimePeriodOptions = [
   '30d',
 ];
 
-export const ExeSQLOptions = ['mysql', 'postgresql', 'mariadb', 'mssql'].map(
-  (x) => ({
-    label: upperFirst(x),
-    value: x,
-  }),
-);
+export const ExeSQLOptions = [
+  'oracle',
+  'mysql',
+  'postgresql',
+  'mariadb',
+  'mssql',
+].map((x) => ({
+  label: upperFirst(x),
+  value: x,
+}));
 
 export const SwitchElseTo = 'end_cpn_id';
 

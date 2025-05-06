@@ -49,7 +49,8 @@ def bulk_insert_into_db(model, data_source, replace_on_conflict=False):
                 if isinstance(DB, PooledMySQLDatabase):
                     query = query.on_conflict(preserve=preserve)
                 else:
-                    query = query.on_conflict(conflict_target="id", preserve=preserve)
+                    #query = query.on_conflict(conflict_target="id", preserve=preserve)
+                    query = query.on_conflict(conflict_target="id")
             query.execute()
 
 

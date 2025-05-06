@@ -39,18 +39,20 @@ This section covers the following topics:
 
 RAGFlow offers multiple chunking template to facilitate chunking files of different layouts and ensure semantic integrity. In **Chunk method**, you can choose the default template that suits the layouts and formats of your files. The following table shows the descriptions and the compatible file formats of each supported chunk template:
 
-| **Template** | Description                                                           | File format                                                                  |
-|--------------|-----------------------------------------------------------------------|------------------------------------------------------------------------------|
-| General      | Files are consecutively chunked based on a preset chunk token number. | DOCX, XLSX, XLS (Excel97~2003), PPT, PDF, TXT, JPEG, JPG, PNG, TIF, GIF, CSV |
-| Q&A          |                                                                       | XLSX, XLS (Excel97~2003), CSV/TXT                                            |
-| Manual       |                                                                       | PDF                                                                          |
-| Table        |                                                                       | XLSX, XLS (Excel97~2003), CSV/TXT                                            |
-| Paper        |                                                                       | PDF                                                                          |
-| Book         |                                                                       | DOCX, PDF, TXT                                                               |
-| Laws         |                                                                       | DOCX, PDF, TXT                                                               |
-| Presentation |                                                                       | PDF, PPTX                                                                    |
-| Picture      |                                                                       | JPEG, JPG, PNG, TIF, GIF                                                     |
-| One          | The entire document is chunked as one.                                | DOCX, XLSX, XLS (Excel97~2003), PDF, TXT                                     |
+| **Template** | Description                                                           | File format                                                                                   |
+|--------------|-----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| General      | Files are consecutively chunked based on a preset chunk token number. | DOCX, XLSX, XLS (Excel97~2003), PPT, PDF, TXT, JPEG, JPG, PNG, TIF, GIF, CSV, JSON, EML, HTML |
+| Q&A          |                                                                       | XLSX, XLS (Excel97~2003), CSV/TXT                                                             |
+| Resume       | Enterprise edition only. You can also try it out on demo.ragflow.io.  | DOCX, PDF, TXT                                                                                |
+| Manual       |                                                                       | PDF                                                                                           |
+| Table        |                                                                       | XLSX, XLS (Excel97~2003), CSV/TXT                                                             |
+| Paper        |                                                                       | PDF                                                                                           |
+| Book         |                                                                       | DOCX, PDF, TXT                                                                                |
+| Laws         |                                                                       | DOCX, PDF, TXT                                                                                |
+| Presentation |                                                                       | PDF, PPTX                                                                                     |
+| Picture      |                                                                       | JPEG, JPG, PNG, TIF, GIF                                                                      |
+| One          | Each document is chunked in its entirety (as one).                    | DOCX, XLSX, XLS (Excel97~2003), PDF, TXT                                                      |
+| Tag          | The knowledge base functions as a tag set for the others.             | XLSX, CSV/TXT                                                                                 |
 
 You can also change a file's chunk method on the **Datasets** page.
 
@@ -63,14 +65,6 @@ An embedding model converts chunks into embeddings. It cannot be changed once th
 The following embedding models can be deployed locally:
 
 - BAAI/bge-large-zh-v1.5
-- BAAI/bge-base-en-v1.5
-- BAAI/bge-large-en-v1.5
-- BAAI/bge-small-en-v1.5
-- BAAI/bge-small-zh-v1.5
-- jinaai/jina-embeddings-v2-base-en
-- jinaai/jina-embeddings-v2-small-en
-- nomic-ai/nomic-embed-text-v1.5
-- sentence-transformers/all-MiniLM-L6-v2
 - maidalun1020/bce-embedding-base_v1
 
 ### Upload file
@@ -130,7 +124,7 @@ See [Run retrieval test](./run_retrieval_test.md) for details.
 
 ## Search for knowledge base
 
-As of RAGFlow v0.17.2, the search feature is still in a rudimentary form, supporting only knowledge base search by name.
+As of RAGFlow v0.18.0, the search feature is still in a rudimentary form, supporting only knowledge base search by name.
 
 ![search knowledge base](https://github.com/infiniflow/ragflow/assets/93570324/836ae94c-2438-42be-879e-c7ad2a59693e)
 

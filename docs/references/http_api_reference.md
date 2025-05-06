@@ -9,6 +9,22 @@ A complete reference for RAGFlow's RESTful API. Before proceeding, please ensure
 
 ---
 
+## ERROR CODES
+
+---
+
+| Code | Message               | Description                |
+|------|-----------------------|----------------------------|
+| 400  | Bad Request           | Invalid request parameters |
+| 401  | Unauthorized          | Unauthorized access        |
+| 403  | Forbidden             | Access denied              |
+| 404  | Not Found             | Resource not found         |
+| 500  | Internal Server Error | Server internal error      |
+| 1001 | Invalid Chunk ID      | Invalid Chunk ID           |
+| 1002 | Chunk Update Failed   | Chunk update failed        |
+
+---
+
 ## OpenAI-Compatible API
 
 ---
@@ -38,6 +54,150 @@ This API follows the same request and response format as OpenAI's API. It allows
 ```bash
 curl --request POST \
      --url http://{address}/api/v1/chats_openai/{chat_id}/chat/completions \
+     --header 'Content-Type: application/json' \
+     --header 'Authorization: Bearer <YOUR_API_KEY>' \
+     --data '{
+        "model": "model",
+        "messages": [{"role": "user", "content": "Say this is a test!"}],
+        "stream": true
+      }'
+```
+
+##### Request Parameters
+
+- `model` (*Body parameter*) `string`, *Required*  
+  The model used to generate the response. The server will parse this automatically, so you can set it to any value for now.
+
+- `messages` (*Body parameter*) `list[object]`, *Required*  
+  A list of historical chat messages used to generate the response. This must contain at least one message with the `user` role.
+
+- `stream` (*Body parameter*) `boolean`  
+  Whether to receive the response as a stream. Set this to `false` explicitly if you prefer to receive the entire response in one go instead of as a stream.
+
+#### Response
+
+Stream:
+
+```json
+{
+    "id": "chatcmpl-3a9c3572f29311efa69751e139332ced",
+    "choices": [
+        {
+            "delta": {
+                "content": "This is a test. If you have any specific questions or need information, feel",
+                "role": "assistant",
+                "function_call": null,
+                "tool_calls": null
+            },
+            "finish_reason": null,
+            "index": 0,
+            "logprobs": null
+        }
+    ],
+    "created": 1740543996,
+    "model": "model",
+    "object": "chat.completion.chunk",
+    "system_fingerprint": "",
+    "usage": null
+}
+// omit duplicated information
+{"choices":[{"delta":{"content":" free to ask, and I will do my best to provide an answer based on","role":"assistant"}}]}
+{"choices":[{"delta":{"content":" the knowledge I have. If your question is unrelated to the provided knowledge base,","role":"assistant"}}]}
+{"choices":[{"delta":{"content":" I will let you know.","role":"assistant"}}]}
+// the last chunk
+{
+    "id": "chatcmpl-3a9c3572f29311efa69751e139332ced",
+    "choices": [
+        {
+            "delta": {
+                "content": null,
+                "role": "assistant",
+                "function_call": null,
+                "tool_calls": null
+            },
+            "finish_reason": "stop",
+            "index": 0,
+            "logprobs": null
+        }
+    ],
+    "created": 1740543996,
+    "model": "model",
+    "object": "chat.completion.chunk",
+    "system_fingerprint": "",
+    "usage": {
+        "prompt_tokens": 18,
+        "completion_tokens": 225,
+        "total_tokens": 243
+    }
+}
+```
+
+Non-stream:
+
+```json
+{
+    "choices":[
+        {
+            "finish_reason":"stop",
+            "index":0,
+            "logprobs":null,
+            "message":{
+                "content":"This is a test. If you have any specific questions or need information, feel free to ask, and I will do my best to provide an answer based on the knowledge I have. If your question is unrelated to the provided knowledge base, I will let you know.",
+                "role":"assistant"
+            }
+        }
+    ],
+    "created":1740543499,
+    "id":"chatcmpl-3a9c3572f29311efa69751e139332ced",
+    "model":"model",
+    "object":"chat.completion",
+    "usage":{
+        "completion_tokens":246,
+        "completion_tokens_details":{
+            "accepted_prediction_tokens":246,
+            "reasoning_tokens":18,
+            "rejected_prediction_tokens":0
+        },
+        "prompt_tokens":18,
+        "total_tokens":264
+    }
+}
+```
+
+Failure:
+
+```json
+{
+  "code": 102,
+  "message": "The last content of this conversation is not from user."
+}
+```
+---
+### Create agent completion
+
+**POST** `/api/v1/agents_openai/{agent_id}/chat/completions`
+
+Creates a model response for a given chat conversation.
+
+This API follows the same request and response format as OpenAI's API. It allows you to interact with the model in a manner similar to how you would with [OpenAI's API](https://platform.openai.com/docs/api-reference/chat/create).
+
+#### Request
+
+- Method: POST
+- URL: `/api/v1/agents_openai/{agent_id}/chat/completions`
+- Headers:
+  - `'content-Type: application/json'`
+  - `'Authorization: Bearer <YOUR_API_KEY>'`
+- Body:
+  - `"model"`: `string`
+  - `"messages"`: `object list`
+  - `"stream"`: `boolean`
+
+##### Request example
+
+```bash
+curl --request POST \
+     --url http://{address}/api/v1/agents_openai/{agent_id}/chat/completions \
      --header 'Content-Type: application/json' \
      --header 'Authorization: Bearer <YOUR_API_KEY>' \
      --data '{
@@ -233,7 +393,6 @@ curl --request POST \
   - `"presentation"`: Presentation
   - `"picture"`: Picture
   - `"one"`: One
-  - `"knowledge_graph"`: Knowledge Graph  
     Ensure your LLM is properly configured on the **Settings** page before selecting this. Please also note that Knowledge Graph consumes a large number of Tokens!
   - `"email"`: Email
 
@@ -243,16 +402,12 @@ curl --request POST \
     - `"chunk_token_count"`: Defaults to `128`.
     - `"layout_recognize"`: Defaults to `true`.
     - `"html4excel"`: Indicates whether to convert Excel documents into HTML format. Defaults to `false`.
-    - `"delimiter"`: Defaults to `"\n!?。；！？"`.
+    - `"delimiter"`: Defaults to `"\n"`.
     - `"task_page_size"`: Defaults to `12`. For PDF only.
     - `"raptor"`: Raptor-specific settings. Defaults to: `{"use_raptor": false}`.
   - If `"chunk_method"` is `"qa"`, `"manuel"`, `"paper"`, `"book"`, `"laws"`, or `"presentation"`, the `"parser_config"` object contains the following attribute:  
     - `"raptor"`: Raptor-specific settings. Defaults to: `{"use_raptor": false}`.
   - If `"chunk_method"` is `"table"`, `"picture"`, `"one"`, or `"email"`, `"parser_config"` is an empty JSON object.
-  - If `"chunk_method"` is `"knowledge_graph"`, the `"parser_config"` object contains the following attributes:  
-    - `"chunk_token_count"`: Defaults to `128`.
-    - `"delimiter"`: Defaults to `"\n!?。；！？"`.
-    - `"entity_types"`: Defaults to `["organization","person","location","event","time"]`
 
 #### Response
 
@@ -276,11 +431,11 @@ Success:
         "name": "test_1",
         "parser_config": {
             "chunk_token_num": 128,
-            "delimiter": "\\n!?;。；！？",
+            "delimiter": "\\n",
             "html4excel": false,
             "layout_recognize": true,
             "raptor": {
-                "user_raptor": false
+                "use_raptor": false
             }
         },
         "permission": "me",
@@ -413,8 +568,6 @@ curl --request PUT \
   - `"picture"`: Picture
   - `"one"`:One
   - `"email"`: Email
-  - `"knowledge_graph"`: Knowledge Graph  
-    Ensure your LLM is properly configured on the **Settings** page before selecting this. Please also note that Knowledge Graph consumes a large number of Tokens!
 
 #### Response
 
@@ -495,10 +648,10 @@ Success:
             "id": "6e211ee0723611efa10a0242ac120007",
             "language": "English",
             "name": "mysql",
-            "chunk_method": "knowledge_graph",
+            "chunk_method": "naive",
             "parser_config": {
                 "chunk_token_num": 8192,
-                "delimiter": "\\n!?;。；！？",
+                "delimiter": "\\n",
                 "entity_types": [
                     "organization",
                     "person",
@@ -528,26 +681,6 @@ Failure:
     "message": "The dataset doesn't exist"
 }
 ```
-
----
-
-## Error Codes
-
----
-
-| Code | Message | Description |
-|------|---------|-------------|
-| 400  | Bad Request | Invalid request parameters |
-| 401  | Unauthorized | Unauthorized access |
-| 403  | Forbidden | Access denied |
-| 404  | Not Found | Resource not found |
-| 500  | Internal Server Error | Server internal error |
-| 1001 | Invalid Chunk ID | Invalid Chunk ID |
-| 1002 | Chunk Update Failed | Chunk update failed |
-
-
-
----
 
 ---
 
@@ -606,11 +739,11 @@ Success:
             "name": "1.txt",
             "parser_config": {
                 "chunk_token_num": 128,
-                "delimiter": "\\n!?;。；！？",
+                "delimiter": "\\n",
                 "html4excel": false,
                 "layout_recognize": true,
                 "raptor": {
-                    "user_raptor": false
+                    "use_raptor": false
                 }
             },
             "run": "UNSTART",
@@ -695,16 +828,12 @@ curl --request PUT \
     - `"chunk_token_count"`: Defaults to `128`.
     - `"layout_recognize"`: Defaults to `true`.
     - `"html4excel"`: Indicates whether to convert Excel documents into HTML format. Defaults to `false`.
-    - `"delimiter"`: Defaults to `"\n!?。；！？"`.
+    - `"delimiter"`: Defaults to `"\n"`.
     - `"task_page_size"`: Defaults to `12`. For PDF only.
     - `"raptor"`: Raptor-specific settings. Defaults to: `{"use_raptor": false}`.
   - If `"chunk_method"` is `"qa"`, `"manuel"`, `"paper"`, `"book"`, `"laws"`, or `"presentation"`, the `"parser_config"` object contains the following attribute:
     - `"raptor"`: Raptor-specific settings. Defaults to: `{"use_raptor": false}`.
   - If `"chunk_method"` is `"table"`, `"picture"`, `"one"`, or `"email"`, `"parser_config"` is an empty JSON object.
-  - If `"chunk_method"` is `"knowledge_graph"`, the `"parser_config"` object contains the following attributes:
-    - `"chunk_token_count"`: Defaults to `128`.
-    - `"delimiter"`: Defaults to `"\n!?。；！？"`.
-    - `"entity_types"`: Defaults to `["organization","person","location","event","time"]`
 
 #### Response
 
@@ -838,7 +967,7 @@ Success:
                 "name": "Test_2.txt",
                 "parser_config": {
                     "chunk_token_count": 128,
-                    "delimiter": "\n!?。；！？",
+                    "delimiter": "\n",
                     "layout_recognize": true,
                     "task_page_size": 12
                 },
@@ -1091,6 +1220,7 @@ curl --request POST \
   The key terms or phrases to tag with the chunk.
 - `"questions"`(*Body parameter*), `list[string]`
   If there is a given question, the embedded chunks will be based on them
+
 #### Response
 
 Success:
@@ -1149,7 +1279,7 @@ curl --request GET \
 
 - `dataset_id`: (*Path parameter*)  
   The associated dataset ID.
-- `document_ids`: (*Path parameter*)  
+- `document_id`: (*Path parameter*)  
   The associated document ID.
 - `keywords`(*Filter parameter*), `string`  
   The keywords used to match chunk content.
@@ -1170,7 +1300,7 @@ Success:
     "data": {
         "chunks": [
             {
-                "available_int": 1,
+                "available": true,
                 "content": "This is a test content.",
                 "docnm_kwd": "1.txt",
                 "document_id": "b330ec2e91ec11efbc510242ac120004",
@@ -1194,11 +1324,11 @@ Success:
             "name": "1.txt",
             "parser_config": {
                 "chunk_token_num": 128,
-                "delimiter": "\\n!?;。；！？",
+                "delimiter": "\\n",
                 "html4excel": false,
                 "layout_recognize": true,
                 "raptor": {
-                    "user_raptor": false
+                    "use_raptor": false
                 }
             },
             "process_begin_at": "Thu, 24 Oct 2024 09:56:44 GMT",
@@ -1536,22 +1666,20 @@ curl --request POST \
   - `"top_p"`: `float`  
     Also known as “nucleus sampling”, this parameter sets a threshold to select a smaller set of words to sample from. It focuses on the most likely words, cutting off the less probable ones. Defaults to `0.3`  
   - `"presence_penalty"`: `float`  
-    This discourages the model from repeating the same information by penalizing words that have already appeared in the conversation. Defaults to `0.2`.
+    This discourages the model from repeating the same information by penalizing words that have already appeared in the conversation. Defaults to `0.4`.
   - `"frequency penalty"`: `float`  
     Similar to the presence penalty, this reduces the model’s tendency to repeat the same words frequently. Defaults to `0.7`.
-  - `"max_token"`: `integer`  
-    The maximum length of the model's output, measured in the number of tokens (words or pieces of words). Defaults to `512`. If disabled, you lift the maximum token limit, allowing the model to determine the number of tokens in its responses.  
 - `"prompt"`: (*Body parameter*), `object`  
   Instructions for the LLM to follow. If it is not explicitly set, a JSON object with the following values will be generated as the default. A `prompt` JSON object contains the following attributes:  
   - `"similarity_threshold"`: `float` RAGFlow employs either a combination of weighted keyword similarity and weighted vector cosine similarity, or a combination of weighted keyword similarity and weighted reranking score during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
   - `"keywords_similarity_weight"`: `float` This argument sets the weight of keyword similarity in the hybrid similarity score with vector cosine similarity or reranking model similarity. By adjusting this weight, you can control the influence of keyword similarity in relation to other similarity measures. The default value is `0.7`.
-  - `"top_n"`: `int` This argument specifies the number of top chunks with similarity scores above the `similarity_threshold` that are fed to the LLM. The LLM will *only* access these 'top N' chunks.  The default value is `8`.
+  - `"top_n"`: `int` This argument specifies the number of top chunks with similarity scores above the `similarity_threshold` that are fed to the LLM. The LLM will *only* access these 'top N' chunks.  The default value is `6`.
   - `"variables"`: `object[]` This argument lists the variables to use in the 'System' field of **Chat Configurations**. Note that:  
     - `"knowledge"` is a reserved variable, which represents the retrieved chunks.
     - All the variables in 'System' should be curly bracketed.
     - The default value is `[{"key": "knowledge", "optional": true}]`.
   - `"rerank_model"`: `string` If it is not specified, vector cosine similarity will be used; otherwise, reranking score will be used.
-  -  `top_k`: `int` Refers to the process of reordering or selecting the top-k items from a list or set based on a specific ranking criterion. Default to 1024.
+  - `top_k`: `int` Refers to the process of reordering or selecting the top-k items from a list or set based on a specific ranking criterion. Default to 1024.
   - `"empty_response"`: `string` If nothing is retrieved in the dataset for the user's question, this will be used as the response. To allow the LLM to improvise when nothing is found, leave this blank.
   - `"opener"`: `string` The opening greeting for the user. Defaults to `"Hi! I am your assistant, can I help you?"`.
   - `"show_quote`: `boolean` Indicates whether the source of text should be displayed. Defaults to `true`.
@@ -1577,7 +1705,6 @@ Success:
         "language": "English",
         "llm": {
             "frequency_penalty": 0.7,
-            "max_tokens": 512,
             "model_name": "qwen-plus@Tongyi-Qianwen",
             "presence_penalty": 0.4,
             "temperature": 0.1,
@@ -1675,8 +1802,6 @@ curl --request PUT \
     This discourages the model from repeating the same information by penalizing words that have already appeared in the conversation. Defaults to `0.2`.
   - `"frequency penalty"`: `float`  
     Similar to the presence penalty, this reduces the model’s tendency to repeat the same words frequently. Defaults to `0.7`.
-  - `"max_token"`: `integer`  
-    The maximum length of the model's output, measured in the number of tokens (words or pieces of words). Defaults to `512`. If disabled, you lift the maximum token limit, allowing the model to determine the number of tokens in its responses.  
 - `"prompt"`: (*Body parameter*), `object`  
   Instructions for the LLM to follow.  A `prompt` object contains the following attributes:  
   - `"similarity_threshold"`: `float` RAGFlow employs either a combination of weighted keyword similarity and weighted vector cosine similarity, or a combination of weighted keyword similarity and weighted rerank score during retrieval. This argument sets the threshold for similarities between the user query and chunks. If a similarity score falls below this threshold, the corresponding chunk will be excluded from the results. The default value is `0.2`.
@@ -1777,7 +1902,7 @@ Lists chat assistants.
 #### Request
 
 - Method: GET
-- URL: `/api/v1/chats?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&name={dataset_name}&id={dataset_id}`
+- URL: `/api/v1/chats?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&name={chat_name}&id={chat_id}`
 - Headers:
   - `'Authorization: Bearer <YOUR_API_KEY>'`
 
@@ -1785,7 +1910,7 @@ Lists chat assistants.
 
 ```bash
 curl --request GET \
-     --url http://{address}/api/v1/chats?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&name={dataset_name}&id={dataset_id} \
+     --url http://{address}/api/v1/chats?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&name={chat_name}&id={chat_id} \
      --header 'Authorization: Bearer <YOUR_API_KEY>'
 ```
 
@@ -1825,7 +1950,6 @@ Success:
             "language": "English",
             "llm": {
                 "frequency_penalty": 0.7,
-                "max_tokens": 512,
                 "model_name": "qwen-plus@Tongyi-Qianwen",
                 "presence_penalty": 0.4,
                 "temperature": 0.1,
@@ -2154,8 +2278,10 @@ Failure:
 Asks a specified chat assistant a question to start an AI-powered conversation.
 
 :::tip NOTE
+
 - In streaming mode, not all responses include a reference, as this depends on the system's judgement.
 - In streaming mode, the last message is an empty message:
+
   ```json
   data:
   {
@@ -2163,6 +2289,7 @@ Asks a specified chat assistant a question to start an AI-powered conversation.
     "data": true
   }
   ```
+
 :::
 
 #### Request
@@ -2189,6 +2316,7 @@ curl --request POST \
      {
      }'
 ```
+
 ```bash
 curl --request POST \
      --url http://{address}/api/v1/chats/{chat_id}/completions \
@@ -2220,6 +2348,7 @@ curl --request POST \
 #### Response
 
 Success without `session_id`:
+
 ```json
 data:{
     "code": 0,
@@ -2510,8 +2639,10 @@ Failure:
 Asks a specified agent a question to start an AI-powered conversation.
 
 :::tip NOTE
+
 - In streaming mode, not all responses include a reference, as this depends on the system's judgement.
 - In streaming mode, the last message is an empty message:
+
   ```json
   data:
   {
@@ -2519,6 +2650,7 @@ Asks a specified agent a question to start an AI-powered conversation.
     "data": true
   }
   ```
+
 :::
 
 #### Request
@@ -2535,9 +2667,16 @@ Asks a specified agent a question to start an AI-powered conversation.
   - `"user_id"`: `string`(optional)
   - `"sync_dsl"`: `boolean` (optional)
   - other parameters: `string`
+
+:::info IMPORTANT
+You can include custom parameters in the request body, but first ensure they are defined in the [Begin](../guides/agent/agent_component_reference/begin.mdx) agent component.
+:::
+
 ##### Request example
-If the **Begin** component does not take parameters, the following code will create a session.
-```bash 
+
+- If the **Begin** component does not take parameters, the following code will create a session.
+
+```bash
 curl --request POST \
      --url http://{address}/api/v1/agents/{agent_id}/completions \
      --header 'Content-Type: application/json' \
@@ -2546,7 +2685,9 @@ curl --request POST \
      {
      }'
 ```
-If the **Begin** component takes parameters, the following code will create a session.
+
+- If the **Begin** component takes parameters, the following code will create a session.  
+
 ```bash
 curl --request POST \
      --url http://{address}/api/v1/agents/{agent_id}/completions \
@@ -2558,7 +2699,9 @@ curl --request POST \
           "file":"How is the weather tomorrow?"
      }'
 ```
+
 The following code will execute the completion process
+
 ```bash
 curl --request POST \
      --url http://{address}/api/v1/agents/{agent_id}/completions \
@@ -2592,7 +2735,9 @@ curl --request POST \
   Parameters specified in the **Begin** component.
 
 #### Response
+
 success without `session_id` provided and with no parameters specified in the **Begin** component:
+
 ```json
 data:{
     "code": 0,
@@ -2647,7 +2792,9 @@ data:{
 }
 data:
 ```
+
 Success with parameters specified in the **Begin** component:
+
 ```json
 data:{
     "code": 0,
@@ -2807,7 +2954,6 @@ Success:
                             "cite": true,
                             "frequency_penalty": 0.7,
                             "llm_id": "gpt-4o___OpenAI-API@OpenAI-API-Compatible",
-                            "max_tokens": 256,
                             "message_history_window_size": 12,
                             "parameters": [],
                             "presence_penalty": 0.4,
@@ -2854,7 +3000,6 @@ Success:
                                 "frequency_penalty": 0.7,
                                 "llm_id": "gpt-4o___OpenAI-API@OpenAI-API-Compatible",
                                 "maxTokensEnabled": true,
-                                "max_tokens": 256,
                                 "message_history_window_size": 12,
                                 "parameters": [],
                                 "presencePenaltyEnabled": true,
@@ -2987,6 +3132,79 @@ Failure:
     "message": "The agent doesn't own the session cbd31e52f73911ef93b232903b842af6"
 }
 ```
+
+---
+
+### Related Questions
+
+**POST** `/api/v1/conversation/related_questions`
+
+Generates five to ten alternative question strings from the user's original query to retrieve more relevant search results.
+
+:::tip NOTE
+The chat model dynamically determines the number of questions to generate based on the instruction, typically between five and ten.
+:::
+
+#### Request
+
+- Method: POST
+- URL: `/api/v1/conversation/related_questions`
+- Headers:
+  - `'content-Type: application/json'`
+  - `'Authorization: Bearer <YOUR_API_KEY>'`
+- Body:
+  - `"question"`: `string`
+
+##### Request example
+
+```bash
+curl --request POST \
+     --url http://{address}/api/v1/conversation/related_questions \
+     --header 'Content-Type: application/json' \
+     --header 'Authorization: Bearer <YOUR_API_KEY>' \
+     --data '
+     {
+          "question": "What are the key advantages of Neovim over Vim?"
+     }'
+```
+
+##### Request Parameters
+
+- `"question"`: (*Body Parameter*), `string`
+  The original user question.
+
+#### Response
+
+Success:
+
+```json
+{
+    "code": 0,
+    "data": [
+        "What makes Neovim superior to Vim in terms of features?",
+        "How do the benefits of Neovim compare to those of Vim?",
+        "What advantages does Neovim offer that are not present in Vim?",
+        "In what ways does Neovim outperform Vim in functionality?",
+        "What are the most significant improvements in Neovim compared to Vim?",
+        "What unique advantages does Neovim bring to the table over Vim?",
+        "How does the user experience in Neovim differ from Vim in terms of benefits?",
+        "What are the top reasons to switch from Vim to Neovim?",
+        "What features of Neovim are considered more advanced than those in Vim?"
+    ],
+    "message": "success"
+}
+```
+
+Failure:
+
+```json
+{
+    "code": 401,
+    "data": null,
+    "message": "<Unauthorized '401: Unauthorized'>"
+}
+```
+
 ---
 
 ## AGENT MANAGEMENT

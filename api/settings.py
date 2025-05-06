@@ -63,6 +63,9 @@ docStoreConn = None
 retrievaler = None
 kg_retrievaler = None
 
+# user registration switch
+REGISTER_ENABLED = 1
+
 
 def init_settings():
     global LLM, LLM_FACTORY, LLM_BASE_URL, LIGHTEN, DATABASE_TYPE, DATABASE, FACTORY_LLM_INFOS
@@ -73,12 +76,17 @@ def init_settings():
     LLM_DEFAULT_MODELS = LLM.get("default_models", {})
     LLM_FACTORY = LLM.get("factory", "Tongyi-Qianwen")
     LLM_BASE_URL = LLM.get("base_url")
-    
+    try:
+        REGISTER_ENABLED = int(os.environ.get("REGISTER_ENABLED", "1"))
+    except Exception:
+        pass
+
     try:
         with open(os.path.join(get_project_base_directory(), "conf", "llm_factories.json"), "r") as f:
             FACTORY_LLM_INFOS = json.load(f)["factory_llm_infos"]
     except Exception:
         FACTORY_LLM_INFOS = []
+
 
     global CHAT_MDL, EMBEDDING_MDL, RERANK_MDL, ASR_MDL, IMAGE2TEXT_MDL
     if not LIGHTEN:
@@ -103,7 +111,7 @@ def init_settings():
     API_KEY = LLM.get("api_key", "")
     PARSERS = LLM.get(
         "parsers",
-        "naive:General,qa:Q&A,resume:Resume,manual:Manual,table:Table,paper:Paper,book:Book,laws:Laws,presentation:Presentation,picture:Picture,one:One,audio:Audio,knowledge_graph:Knowledge Graph,email:Email,tag:Tag")
+        "naive:General,qa:Q&A,resume:Resume,manual:Manual,table:Table,paper:Paper,book:Book,laws:Laws,presentation:Presentation,picture:Picture,one:One,audio:Audio,email:Email,tag:Tag")
 
     HOST_IP = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("host", "127.0.0.1")
     HOST_PORT = get_base_config(RAG_FLOW_SERVICE_NAME, {}).get("http_port")

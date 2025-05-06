@@ -1,6 +1,6 @@
 ragflow:
   host: 0.0.0.0
-  http_port: 9381
+  http_port: 9380
 mysql:
   name: 'rag_flow'
   user: 'root'
@@ -11,8 +11,8 @@ mysql:
   stale_timeout: 30
 oracle:
   name: 'rag_flow'
-  user: 'ragflow'
-  password: 'reagflow'
+  user: 'conrag'
+  password: 'conrag'
   db: 'freepdb1'
   host: '192.168.17.33'
   port: 1521

@@ -278,15 +278,15 @@ class TaskService(CommonService):
                 ).execute()
             return
 
-        with DB.lock("update_progress", -1):
-            if info["progress_msg"]:
-                task = cls.model.get_by_id(id)
-                progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
-                cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
-            if "progress" in info:
-                cls.model.update(progress=info["progress"]).where(
-                    cls.model.id == id
-                ).execute()
+       #with DB.lock("update_progress", -1):
+        if info["progress_msg"]:
+            task = cls.model.get_by_id(id)
+            progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
+            cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
+        if "progress" in info:
+            cls.model.update(progress=info["progress"]).where(
+                cls.model.id == id
+            ).execute()
 
 
 def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
@@ -376,7 +376,7 @@ def queue_tasks(doc: dict, bucket: str, name: str, priority: int):
                                          chunking_config["kb_id"])
     DocumentService.update_by_id(doc["id"], {"chunk_num": ck_num})
 
-    bulk_insert_into_db(Task, parse_task_array, True)
+    bulk_insert_into_db(Task, parse_task_array, False)
     DocumentService.begin2parse(doc["id"])
 
     unfinished_task_array = [task for task in parse_task_array if task["progress"] < 1.0]

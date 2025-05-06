@@ -5,6 +5,9 @@ import re
 import oracledb
 import copy
 from typing import Any, List, Dict
+
+from numpy import array
+
 from rag import settings
 from rag.settings import TAG_FLD, PAGERANK_FLD
 from rag.utils import singleton
@@ -296,7 +299,9 @@ class OracleConnection(DocStoreConnection):
                     for col in columns:
                         value = doc[col]
                         # 对向量字段进行特殊处理
-                        if col.startswith('q_') and col.endswith('_vec') and isinstance(value, list):
+                        if col.startswith('q_') and col.endswith('_vec'):
+                            if hasattr(value, 'tolist'):  # 处理numpy数组
+                                value = value.tolist()
                             row_data[col] = f'{json.dumps(value)}'  # 转换为JSON字符串并添加单引号
                         else:
                             row_data[col] = value
@@ -345,8 +350,14 @@ class OracleConnection(DocStoreConnection):
                     row = cursor.fetchone()
                     if row:
                         # 将结果转换为字典
+                        row_dict = {}
                         columns = [col[0] for col in cursor.description]
-                        result = dict(zip(columns, row))
+                        for idx, value in enumerate(row):
+                            if isinstance(value, oracledb.LOB):  # 如果是LOB类型
+                                 row_dict[columns[idx]] = value.read()  # 读取LOB内容
+                            else:
+                                 row_dict[columns[idx]] = value
+                        result = row_dict
                         break
                         
         if result:
@@ -354,7 +365,7 @@ class OracleConnection(DocStoreConnection):
             for field in ["important_kwd", "question_kwd", "entities_kwd", "tag_kwd", "source_id"]:
                 if field in result and isinstance(result[field], str):
                     result[field] = result[field].split("###")
-            
+
             # 处理position_int字段
             if "position_int" in result and isinstance(result["position_int"], str):
                 hex_values = result["position_int"].split("_")
@@ -367,8 +378,17 @@ class OracleConnection(DocStoreConnection):
             for field in ["page_num_int", "top_int"]:
                 if field in result and isinstance(result[field], str):
                     result[field] = [int(hex_val, 16) for hex_val in result[field].split("_")]
-        
-        #logger.debug(f"ORACLE get result: {result}")
+
+            # 处理所有以Q_开头，_VEC结尾的向量字段
+            vec_pattern = re.compile(r'^Q_.*_VEC$')
+            for field in result:
+                if vec_pattern.match(field):
+                    if hasattr(result[field], 'tolist'):  # 处理numpy数组
+                        result[field] = json.dumps(result[field].tolist())
+                    elif isinstance(result[field], (list, array)):  # 处理列表或array类型
+                        result[field] = json.dumps(list(result[field]))
+
+        logger.debug(f"ORACLE get result: {result}")
         return result    
         
     def search(
@@ -537,19 +557,25 @@ class OracleConnection(DocStoreConnection):
         logger.info(f"ORACLE search final result: {total_hits_count}")
         return results, total_hits_count
 
-    def update(
-            self,
-            indexName: str,
-            knowledgebaseId: str,
-            condition: Dict[str, Any],
-            updates: Dict[str, Any]
-    ) -> bool:
+    def update(self,
+               condition: Dict[str, Any],
+               newValue: Dict[str, Any],
+               indexName: str,
+               knowledgebaseId: str
+        ) -> bool:
         """更新文档"""
         try:
             table_name = f"{indexName}_{knowledgebaseId}"
             with self.conn_pool.acquire() as conn:
                 cursor = conn.cursor()
-                
+
+                # 数据预处理
+                updates = copy.deepcopy(newValue)
+                for k, v in updates.items():
+                    if isinstance(v, list):
+                        if k in ["important_kwd", "question_kwd", "entities_kwd", "tag_kwd", "source_id"]:
+                            updates[k] = "###".join(v)
+
                 # 构建SET子句
                 set_clause = ", ".join([f"{k} = :{k}" for k in updates.keys()])
                 
@@ -562,11 +588,13 @@ class OracleConnection(DocStoreConnection):
                 SET {set_clause}
                 WHERE {where_clause}
                 """
-                
                 # 合并参数
                 params = {**updates}
                 if condition:
                     for k, v in condition.items():
+                        # 过滤掉键名为 'id' 的参数
+                        if k.lower() == 'id':  # 可选：使用 .lower() 确保大小写不敏感
+                            continue
                         if isinstance(v, list):
                             for i, val in enumerate(v):
                                 params[f"{k}_{i}"] = val
@@ -574,6 +602,7 @@ class OracleConnection(DocStoreConnection):
                             params[k] = v
                 
                 # 执行更新
+                logger.debug(f"ORACLE update SQL  {update_sql}, {params}.")
                 cursor.execute(update_sql, params)
                 conn.commit()
                 return True

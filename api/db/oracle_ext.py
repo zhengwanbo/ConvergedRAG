@@ -10,7 +10,9 @@ from peewee import EnclosedNodeList
 from peewee import Entity
 from peewee import Node
 from peewee import NodeList
+from peewee import CharField
 from peewee import TextField
+
 
 #from peewee import compiler
 import logging
@@ -101,14 +103,6 @@ class OracleDatabase(Database):
             logger.error("缺少必要的连接参数，无法生成 DSN 字符串。")
 
         conn = oracle.connect(dsn)
-        #conn = oracle.create_pool(
-        #    user= user,
-        #    password= password,
-        #    dsn="{}:{}/{}".format(host, port, db),
-        #    min=1,
-        #    max=50,
-        #    increment=1,
-        #)
 
         return conn
 
@@ -209,7 +203,7 @@ class OracleDatabase(Database):
             logger.debug(f"执行的 SQL 语句: {sql}")
             logger.debug(f"使用的参数: {params}")
             error, = e.args
-            logger.error(f"执行 SQL 时出现错误: {error.message}")
+            logger.debug(f"执行 SQL 时出现错误: {error.message}")
 
         return cursor
 
@@ -241,6 +235,84 @@ class OracleDatabase(Database):
                 update[getattr(src, key)] = value
         return Update(self, update=update)
 
+    def conflict_statement(self, on_conflict, query):
+        return
+
+    def conflict_update(self, oc, query):
+        action = oc._action.lower() if oc._action else ''
+        if action in ('ignore', 'nothing'):
+            if hasattr(query, 'model'):
+                table = query.model._meta.table_name
+            else:
+                table = query._from[0].name if hasattr(query, '_from') else None
+
+            # Handle both string and dict cases for _insert
+            insert_cols = []
+            for col in query._insert:
+                if isinstance(col, dict):
+                    insert_cols.extend(col.keys())
+                else:
+                    insert_cols.append(col)
+
+            parts = [
+                SQL('MERGE INTO'),
+                Entity(table),
+                SQL('USING (SELECT 1 FROM DUAL)'),
+                SQL('ON (%s)' % ' AND '.join(
+                    f'{col}=EXCLUDED.{col}'
+                    for col in oc._conflict_target
+                )),
+                SQL('WHEN NOT MATCHED THEN'),
+                SQL('INSERT (%s) VALUES (%s)' % (
+                    ', '.join(insert_cols),
+                    ', '.join(f':{i + 1}' for i in range(len(query._values)))
+                ))
+            ]
+            return NodeList(parts)
+        elif action and action != 'update':
+            raise ValueError('Oracle only supports "ignore" or "update" for conflict resolution')
+
+        if hasattr(query, 'model'):
+            table = query.model._meta.table_name
+        else:
+            table = query._from[0].name if hasattr(query, '_from') else None
+
+        update_cols = []
+        for col in (oc._update or []):
+            if isinstance(col, (list, tuple)):
+                update_cols.append(f'{col[0]} = {col[1]}')
+            else:
+                update_cols.append(f'{col} = EXCLUDED.{col}')
+
+        # Handle both string and dict cases for _insert
+        insert_cols = []
+        for col in query._insert:
+            if isinstance(col, dict):
+                insert_cols.extend(col.keys())
+            else:
+                insert_cols.append(col)
+
+        parts = [
+            SQL('MERGE INTO'),
+            Entity(table),
+            SQL('USING (SELECT %s FROM DUAL)' % ', '.join(
+                f':{i + 1} AS {col}'
+                for i, col in enumerate(insert_cols)
+            )),
+            SQL('ON (%s)' % ' AND '.join(
+                f'{col}=EXCLUDED.{col}'
+                for col in oc._conflict_target
+            )),
+            SQL('WHEN MATCHED THEN'),
+            SQL('UPDATE SET %s' % ', '.join(update_cols)),
+            SQL('WHEN NOT MATCHED THEN'),
+            SQL('INSERT (%s) VALUES (%s)' % (
+                ', '.join(insert_cols),
+                ', '.join(f'EXCLUDED.{col}' for col in insert_cols)
+            ))
+        ]
+
+        return NodeList(parts)
 
     def _create_context(self, **kwargs):
         context = super()._create_context(**kwargs)
@@ -384,15 +456,56 @@ class PooledOracleDatabase(PooledDatabase, OracleDatabase):
 
 class OracleMigrator(SchemaMigrator):
     def _alter_table(self, table, operation):
-        statement = 'ALTER TABLE %s %s' % (table, operation)
-        return self.execute(statement)
+        try:
+            # 这里应该是实际执行 SQL 语句的代码
+            cursor = self.database.cursor()
+            statement = 'ALTER TABLE "%s" %s' % (table, operation)
+            logger.debug(f"OracleMigrator ALTER TABLE: {statement}")
+            cursor.execute(statement)
+            self.database.commit()
+            return True
+        except Exception as e:
+            logger.debug(f"Error executing statement: {e}")
+            self.database.rollback()
+            return False
+
+    def get_column_type(self, field):
+        # 根据 Peewee 字段类型映射到 Oracle 数据类型
+        if isinstance(field, CharField):
+            return f"VARCHAR2({field.max_length})"
+        # 可以根据需要添加更多字段类型的映射
+        raise ValueError(f"Unsupported field type: {type(field)}")
 
     def add_column(self, table, column_name, field):
-        # Oracle 不支持在 ADD COLUMN 时使用 AS 关键字
-        operations = []
-        field_clause = field.ddl(column_name)
-        operations.append(('ADD %s' % field_clause, []))
-        return self._alter_table(table, *operations[0])
+        # 根据字段类型生成对应的 Oracle 数据类型
+        data_type = self.get_column_type(field)
+        # 构建 ALTER TABLE 语句
+        operation = f'ADD "{column_name}" {data_type}'
+        if field.default is not None:
+            if isinstance(field.default, str):
+                operation += f" DEFAULT '{field.default}'"
+            else:
+                operation += f" DEFAULT {field.default}"
+        if not field.null:
+            operation += " NOT NULL"
+        # 执行 ALTER TABLE 语句
+        self._alter_table(table, operation)
+
+    def alter_column_type(self, table, column_name, field):
+        # 根据字段类型生成对应的 Oracle 数据类型
+        data_type = self.get_column_type(field)
+        # 构建 ALTER TABLE 语句
+        operation = f'MODIFY "{column_name}" {data_type}'
+        if field.default is not None:
+            if isinstance(field.default, str):
+                operation += f" DEFAULT '{field.default}'"
+            else:
+                operation += f" DEFAULT {field.default}"
+        if not field.null:
+            operation += " NOT NULL"
+        # 执行 ALTER TABLE 语句
+        self._alter_table(table, operation)
+
 
     def drop_column(self, table, column_name, cascade=True):
         # Oracle 使用 DROP COLUMN 而不是 DROP

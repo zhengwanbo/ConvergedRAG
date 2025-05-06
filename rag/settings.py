@@ -21,13 +21,35 @@ from api.utils.file_utils import get_project_base_directory
 # Server
 RAG_CONF_PATH = os.path.join(get_project_base_directory(), "conf")
 
-ES = get_base_config("es", {})
-ORACLE = get_base_config("orclvector", {})
-INFINITY = get_base_config("infinity", {"uri": "infinity:23817"})
-AZURE = get_base_config("azure", {})
-S3 = get_base_config("s3", {})
-MINIO = decrypt_database_config(name="minio")
-OSS = get_base_config("oss", {})
+# Get storage type and document engine from system environment variables
+STORAGE_IMPL_TYPE = os.getenv('STORAGE_IMPL', 'MINIO')
+DOC_ENGINE = os.getenv('DOC_ENGINE', 'oracle')
+
+ES = {}
+ORACLE = {}
+INFINITY = {}
+AZURE = {}
+S3 = {}
+MINIO = {}
+OSS = {}
+
+# Initialize the selected configuration data based on environment variables to solve the problem of initialization errors due to lack of configuration
+if DOC_ENGINE == 'elasticsearch':
+    ES = get_base_config("es", {})
+elif DOC_ENGINE == 'infinity':
+    INFINITY = get_base_config("infinity", {"uri": "infinity:23817"})
+elif DOC_ENGINE == 'oracle':
+    ORACLE = get_base_config("orclvector", {})
+
+if STORAGE_IMPL_TYPE in ['AZURE_SPN', 'AZURE_SAS']:
+    AZURE = get_base_config("azure", {})
+elif STORAGE_IMPL_TYPE == 'AWS_S3':
+    S3 = get_base_config("s3", {})
+elif STORAGE_IMPL_TYPE == 'MINIO':
+    MINIO = decrypt_database_config(name="minio")
+elif STORAGE_IMPL_TYPE == 'OSS':
+    OSS = get_base_config("oss", {})
+
 try:
     REDIS = decrypt_database_config(name="redis")
 except Exception:
@@ -40,6 +62,13 @@ SVR_CONSUMER_GROUP_NAME = "rag_flow_svr_task_broker"
 PAGERANK_FLD = "pagerank_fea"
 TAG_FLD = "tag_feas"
 
+PARALLEL_DEVICES = None
+try:
+    import torch.cuda
+    PARALLEL_DEVICES = torch.cuda.device_count()
+    logging.info(f"found {PARALLEL_DEVICES} gpus")
+except Exception:
+    logging.info("can't import package 'torch'")
 
 def print_rag_settings():
     logging.info(f"MAX_CONTENT_LENGTH: {DOC_MAXIMUM_SIZE}")
