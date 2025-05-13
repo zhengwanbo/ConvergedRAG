@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
-    <content url="file://$MODULE_DIR$" />
+    <content url="file://$MODULE_DIR$">
+      <excludeFolder url="file://$MODULE_DIR$/.pytest_cache/v" />
+      <excludeFolder url="file://$MODULE_DIR$/flask_session" />
+      <excludeFolder url="file://$MODULE_DIR$/rag/res/deepdoc" />
+      <excludeFolder url="file://$MODULE_DIR$/web/dist" />
+      <excludeFolder url="file://$MODULE_DIR$/web/node_modules" />
+      <excludeFolder url="file://$MODULE_DIR$/web/src/.umi-production/core" />
+      <excludeFolder url="file://$MODULE_DIR$/web/src/.umi-production/plugin-icons" />
+      <excludeFolder url="file://$MODULE_DIR$/web/src/.umi-production/plugin-tailwindcss" />
+      <excludeFolder url="file://$MODULE_DIR$/web/src/.umi/core" />
+      <excludeFolder url="file://$MODULE_DIR$/web/src/.umi/plugin-clickToComponent" />
+      <excludeFolder url="file://$MODULE_DIR$/web/src/.umi/plugin-icons" />
+      <excludeFolder url="file://$MODULE_DIR$/web/src/.umi/plugin-tailwindcss" />
+    </content>
     <orderEntry type="jdk" jdkName="ragflow" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

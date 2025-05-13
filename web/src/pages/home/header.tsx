@@ -29,7 +29,7 @@ export function HomeHeader() {
       { path: '/chat', name: t('chat'), icon: MessageSquareText },
       { path: '/search', name: t('search'), icon: Search },
       { path: '/flow', name: t('flow'), icon: Cpu },
-      // { path: '/file', name: t('fileManager'), icon: FileIcon },
+      { path: '/file', name: t('fileManager'), icon: FileIcon },
     ],
     [t],
   );

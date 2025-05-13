@@ -152,7 +152,7 @@ const routes = [
   {
     path: Routes.Home,
     layout: false,
-    component: '@/layouts/next',
+    component: '@/layouts',
     routes: [
       {
         path: Routes.Home,

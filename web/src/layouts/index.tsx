@@ -88,7 +88,13 @@ const App: React.FC = () => {
             selectedKeys={[selectedKey]}
             items={menuItems}
             onSelect={({ key }) => navigate(key)}
-            style={{ height: '100%', borderRight: 0 }}
+            style={{
+              height: '100%',
+              borderRight: 0,
+              fontFamily: 'var(--font-sans)', // 使用主题字体
+              fontSize: '14px', // 设置字体大小
+            }}
+            className="font-sans text-sm"
           />
         </Sider>
 

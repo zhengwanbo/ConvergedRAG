@@ -69,6 +69,7 @@ export default {
       setting: '用户设置',
       logout: '登出',
       fileManager: '文件管理',
+      userManagement: '用户管理',
       flow: 'Agent',
       search: '搜索',
     },

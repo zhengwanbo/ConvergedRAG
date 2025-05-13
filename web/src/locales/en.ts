@@ -69,6 +69,7 @@ export default {
       setting: 'User settings',
       logout: 'Log out',
       fileManager: 'File Management',
+      userManagement: 'User Management',
       flow: 'Agent',
       search: 'Search',
     },
