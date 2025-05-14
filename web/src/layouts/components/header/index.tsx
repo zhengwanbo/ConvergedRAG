@@ -1,9 +1,9 @@
-// /src/layouts/components/header/index.tsx
 import { useTranslate } from '@/hooks/common-hooks';
 import { useFetchAppConf } from '@/hooks/logic-hooks';
 import { useNavigateWithFromState } from '@/hooks/route-hook';
 import { Layout, Space, theme } from 'antd';
-import { useCallback } from 'react';
+import { MouseEventHandler, useCallback } from 'react';
+import { useLocation } from 'umi';
 import Toolbar from '../right-toolbar';
 
 import { useTheme } from '@/components/theme-provider';
@@ -16,9 +16,19 @@ const RagHeader = () => {
     token: { colorBgContainer },
   } = theme.useToken();
   const navigate = useNavigateWithFromState();
+  const { pathname } = useLocation();
   const { t } = useTranslate('header');
   const appConf = useFetchAppConf();
   const { theme: themeRag } = useTheme();
+
+  const handleChange = useCallback(
+    (path: string): MouseEventHandler =>
+      (e) => {
+        e.preventDefault();
+        navigate(path);
+      },
+    [navigate],
+  );
 
   const handleLogoClick = useCallback(() => {
     navigate('/');

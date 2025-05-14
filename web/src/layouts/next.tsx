@@ -44,11 +44,36 @@ export default function NextLayout() {
         label: t('fileManager'),
         icon: <FileIcon className="size-5" />,
       },
+      {
+        key: '/user',
+        label: t('userManager'),
+        icon: <FileIcon className="size-5" />,
+        children: [
+          { key: '/user/profile', label: t('profile') },
+          { key: '/user/password', label: t('password') },
+          { key: '/user/team', label: t('team') },
+          { key: '/user/locale', label: t('setting') },
+          { key: '/user/logout', label: t('logout') },
+        ],
+      },
+      {
+        key: '/system',
+        label: t('systemManager'),
+        icon: <FileIcon className="size-5" />,
+        children: [
+          { key: '/system/settingmodel', label: t('modelProvider') },
+          { key: '/system/sysinfo', label: t('systeminfo') },
+          { key: '/system/api', label: t('api') },
+        ],
+      },
     ],
     [t],
   );
 
   const selectedKey = useMemo(() => {
+    //const basePath = pathname.split('/')[1];
+    //const { logout } = useLogout();
+
     return (
       menuItems.find((item) => pathname.startsWith(item.key))?.key ||
       '/knowledge'

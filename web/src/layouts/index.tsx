@@ -11,6 +11,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { ReactComponent as FileIcon } from '@/assets/svg/file-management.svg';
 import { ReactComponent as GraphIcon } from '@/assets/svg/graph.svg';
 import { ReactComponent as KnowledgeBaseIcon } from '@/assets/svg/knowledge-base.svg';
+import { ReactComponent as UserIcon } from '@/assets/svg/profile.svg';
+import { ReactComponent as SysIcon } from '@/assets/svg/prompt.svg';
 import { useTranslate } from '@/hooks/common-hooks';
 import { useNavigateWithFromState } from '@/hooks/route-hook';
 import { MessageOutlined, SearchOutlined } from '@ant-design/icons';
@@ -54,6 +56,27 @@ const App: React.FC = () => {
         label: t('fileManager'),
         icon: <FileIcon className="size-5" />,
       },
+      {
+        key: '/user',
+        label: t('userManager'),
+        icon: <UserIcon className="size-5" />,
+        children: [
+          { key: '/user/profile', label: t('profile') },
+          { key: '/user/password', label: t('password') },
+          { key: '/user/team', label: t('team') },
+          { key: '/user/locale', label: t('setting') },
+        ],
+      },
+      {
+        key: '/system',
+        label: t('systemManager'),
+        icon: <SysIcon className="size-5" />,
+        children: [
+          { key: '/system/settingmodel', label: t('modelProvider') },
+          { key: '/system/sysinfo', label: t('systeminfo') },
+          { key: '/system/api', label: t('api') },
+        ],
+      },
     ],
     [t],
   );
@@ -79,6 +102,7 @@ const App: React.FC = () => {
           width={200}
           style={{
             background: colorBgContainer,
+            borderRadius: borderRadiusLG,
             height: '100%',
             overflow: 'auto',
           }}
@@ -103,7 +127,9 @@ const App: React.FC = () => {
             flex: 1,
             padding: '24px',
             background: colorBgContainer,
+            borderRadius: borderRadiusLG,
             overflow: 'auto',
+            display: 'flex',
           }}
         >
           <Outlet />

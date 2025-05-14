@@ -90,34 +90,9 @@ const routes = [
         path: '/user-setting',
         component: '@/pages/user-setting',
         routes: [
-          { path: '/user-setting', redirect: '/user-setting/profile' },
-          {
-            path: '/user-setting/profile',
-            component: '@/pages/user-setting/setting-profile',
-          },
-          {
-            path: '/user-setting/locale',
-            component: '@/pages/user-setting/setting-locale',
-          },
-          {
-            path: '/user-setting/password',
-            component: '@/pages/user-setting/setting-password',
-          },
-          {
-            path: '/user-setting/model',
-            component: '@/pages/user-setting/setting-model',
-          },
           {
             path: '/user-setting/team',
             component: '@/pages/user-setting/setting-team',
-          },
-          {
-            path: '/user-setting/system',
-            component: '@/pages/user-setting/setting-system',
-          },
-          {
-            path: '/user-setting/api',
-            component: '@/pages/user-setting/setting-api',
           },
         ],
       },
@@ -136,6 +111,47 @@ const routes = [
       {
         path: '/search',
         component: '@/pages/search',
+      },
+      {
+        path: '/user',
+        component: '@/pages/user-setting',
+        routes: [
+          { path: '/user', redirect: '/user/profile' },
+          {
+            path: '/user/profile',
+            component: '@/pages/user-setting/setting-profile',
+          },
+          {
+            path: '/user/locale',
+            component: '@/pages/user-setting/setting-locale',
+          },
+          {
+            path: '/user/password',
+            component: '@/pages/user-setting/setting-password',
+          },
+          {
+            path: '/user/team',
+            component: '@/pages/user-setting/setting-team',
+          },
+        ],
+      },
+      {
+        path: '/system',
+        component: '@/pages/user-setting',
+        routes: [
+          {
+            path: '/system/settingmodel',
+            component: '@/pages/user-setting/setting-model',
+          },
+          {
+            path: '/system/sysinfo',
+            component: '@/pages/user-setting/setting-system',
+          },
+          {
+            path: '/system/api',
+            component: '@/pages/user-setting/setting-api',
+          },
+        ],
       },
     ],
   },

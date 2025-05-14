@@ -23,11 +23,14 @@ const Circle = ({ children, ...restProps }: React.PropsWithChildren) => {
 };
 
 const handleGithubCLick = () => {
-  window.open('https://github.com/infiniflow/ragflow', 'target');
+  window.open('https://github.com/zhengwanbo/ConvergedRAG/tree/main', 'target');
 };
 
 const handleDocHelpCLick = () => {
-  window.open('https://ragflow.io/docs/dev/category/guides', 'target');
+  window.open(
+    'https://docs.oracle.com/en/database/oracle/oracle-database/23/nfcoa/ai_vector_search.html',
+    'target',
+  );
 };
 
 const RightToolBar = () => {
