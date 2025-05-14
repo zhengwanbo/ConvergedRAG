@@ -5,15 +5,15 @@ import { Outlet } from 'umi';
 import '../locales/config';
 import Header from './components/header';
 
-import { Toaster as Sonner } from '@/components/ui/sonner';
-import { Toaster } from '@/components/ui/toaster';
-
 import { ReactComponent as FileIcon } from '@/assets/svg/file-management.svg';
 import { ReactComponent as GraphIcon } from '@/assets/svg/graph.svg';
 import { ReactComponent as KnowledgeBaseIcon } from '@/assets/svg/knowledge-base.svg';
 import { ReactComponent as UserIcon } from '@/assets/svg/profile.svg';
 import { ReactComponent as SysIcon } from '@/assets/svg/prompt.svg';
+import { Toaster as Sonner } from '@/components/ui/sonner';
+import { Toaster } from '@/components/ui/toaster';
 import { useTranslate } from '@/hooks/common-hooks';
+import { useLogout } from '@/hooks/login-hooks';
 import { useNavigateWithFromState } from '@/hooks/route-hook';
 import { MessageOutlined, SearchOutlined } from '@ant-design/icons';
 import { useLocation } from 'umi';
@@ -28,7 +28,7 @@ const App: React.FC = () => {
   const { t } = useTranslate('header');
   const navigate = useNavigateWithFromState();
   const { pathname } = useLocation();
-
+  const { logout } = useLogout();
   const menuItems = useMemo(
     () => [
       {
@@ -64,7 +64,7 @@ const App: React.FC = () => {
           { key: '/user/profile', label: t('profile') },
           { key: '/user/password', label: t('password') },
           { key: '/user/team', label: t('team') },
-          { key: '/user/locale', label: t('setting') },
+          { key: '/user/logout', label: t('logout'), onClick: logout() },
         ],
       },
       {
@@ -111,7 +111,14 @@ const App: React.FC = () => {
             mode="inline"
             selectedKeys={[selectedKey]}
             items={menuItems}
-            onSelect={({ key }) => navigate(key)}
+            onSelect={({ key }) => {
+              if (key === '/user/logout') {
+                // 排除 logout 的特殊处理
+                logout();
+              } else {
+                navigate(key);
+              }
+            }}
             style={{
               height: '100%',
               borderRight: 0,
