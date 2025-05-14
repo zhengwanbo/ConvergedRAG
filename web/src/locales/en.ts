@@ -57,8 +57,9 @@ export default {
       continue: 'Continue',
       title: 'Start building your smart assistants.',
       description:
-        'Sign up for free to explore top RAG technology. Create knowledge bases and AIs to empower your business.',
-      review: 'from 500+ reviews',
+        'Based on Oracle AI centic data platform, explore and use Converged RAG technology, Create knowledge bases and AIs to empower your business.',
+      review:
+        'From business scenarios of multiple enterprises from different industries',
     },
     header: {
       knowledgeBase: 'Knowledge Base',

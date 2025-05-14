@@ -57,8 +57,8 @@ export default {
       continue: '继续',
       title: '开始构建您的智能助手',
       description:
-        '免费注册以探索顶级 RAG 技术。 创建知识库和人工智能来增强您的业务',
-      review: '来自 500 多条评论',
+        '基于Oracle以AI为中心企业级基础平台，探索使用融合RAG技术，创建企业知识库和人工智能来增强您的业务',
+      review: '来自不同行业多个企业业务场景实践',
     },
     header: {
       knowledgeBase: '知识库',
@@ -74,7 +74,7 @@ export default {
       profile: '概要',
       password: '密码',
       team: '团队',
-      modelProvider: '模型提供商',
+      modelProvider: '模型配置',
       systeminfo: '系统信息',
       api: 'API',
       flow: 'Agent',
