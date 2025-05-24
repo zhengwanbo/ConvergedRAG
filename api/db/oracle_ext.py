@@ -151,24 +151,22 @@ class OracleDatabase(Database):
         if commit is not None:
             __deprecated__('"commit" has been deprecated and is a no-op.')
 
-        if isinstance(sql, str) and params:
-            # 替换 :%d 为实际的参数序号
-            param_count = 1
-            while ':%d' in sql:
-                sql = sql.replace(':%d', ':%d' % param_count, 1)
-                param_count += 1
+        # 将 :%D 替换为 :1, :2, :3... 格式
+        if params and isinstance(params, (list, tuple)):
+            for i in range(len(params)):
+                sql = sql.replace(f':%d', f':{i+1}', 1)
 
         # 去除 SQL 中的 AS 字符串
         sql = sql.replace(" AS ", " ")
 
         # 处理 LIMIT 替换为 FETCH FIRST 和 OFFSET
-        if "LIMIT" in sql.upper():
-            limit_index = sql.upper().find("LIMIT")
+        if "LIMIT" in sql:
+            limit_index = sql.find("LIMIT")
             limit_value = sql[limit_index + len("LIMIT"):].strip()
             limit_placeholder = None
             offset_placeholder = None
-            if "OFFSET" in limit_value.upper():
-                offset_index = limit_value.upper().find("OFFSET")
+            if "OFFSET" in limit_value:
+                offset_index = limit_value.find("OFFSET")
                 offset_part = limit_value[offset_index + len("OFFSET"):].strip()
                 limit_part = limit_value[:offset_index].strip()
                 # 提取 LIMIT 和 OFFSET 后面的占位符序号
@@ -196,7 +194,7 @@ class OracleDatabase(Database):
         try:
             cursor.execute(sql, params or ())
             # 对于 INSERT、UPDATE、DELETE 语句，需要提交事务
-            if sql.strip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')):
+            if sql.strip().startswith(('INSERT', 'UPDATE', 'DELETE')):
                 cursor.connection.commit()
         except oracle.Error as e:
             # 打印 SQL 信息和参数

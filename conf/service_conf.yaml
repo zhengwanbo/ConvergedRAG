@@ -1,20 +1,12 @@
 ragflow:
   host: 0.0.0.0
   http_port: 9380
-mysql:
-  name: 'rag_flow'
-  user: 'root'
-  password: 'infini_rag_flow'
-  host: 'localhost'
-  port: 5455
-  max_connections: 100
-  stale_timeout: 30
 oracle:
   name: 'rag_flow'
   user: 'conrag'
   password: 'conrag'
   db: 'freepdb1'
-  host: '192.168.17.33'
+  host: 'localhost'
   port: 1521
   max_connections: 100
   stale_timeout: 30
@@ -23,7 +15,7 @@ orclvector:
   user: 'ragvector'
   password: 'ragvector'
   db: 'freepdb1'
-  host: '192.168.17.33'
+  host: 'localhost'
   port: 1521
   max_connections: 100
   stale_timeout: 30

@@ -158,7 +158,21 @@ def remove_field_name_prefix(field_name):
     return field_name[2:] if field_name.startswith("f_") else field_name
 
 
-class BaseModel(Model):
+class UpperCaseModelMeta(type(Model)):
+    def __new__(cls, name, bases, attrs):
+        # 处理表名（如果有 db_table 属性）
+        if 'Meta' in attrs and hasattr(attrs['Meta'], 'db_table'):
+            attrs['Meta'].db_table = attrs['Meta'].db_table.upper()
+
+        # 处理字段名
+        for attr_name, attr_value in list(attrs.items()):
+            if isinstance(attr_value, Field):
+                # 将字段名转为大写
+                attr_value.column_name = attr_name.upper()
+
+        return super().__new__(cls, name, bases, attrs)
+
+class BaseModel(Model, metaclass=UpperCaseModelMeta):
     create_time = BigIntegerField(null=True, index=True)
     create_date = DateTimeField(null=True, index=True)
     update_time = BigIntegerField(null=True, index=True)
@@ -577,7 +591,7 @@ class User(DataBaseModel, UserMixin):
         return jwt.dumps(str(self.access_token))
 
     class Meta:
-        db_table = "user"
+        db_table = "users"
 
 
 class Tenant(DataBaseModel):
@@ -592,12 +606,12 @@ class Tenant(DataBaseModel):
         index=True)
     asr_id = CharField(
         max_length=128,
-        null=False,
+        null=True,
         help_text="default ASR model ID",
         index=True)
     img2txt_id = CharField(
         max_length=128,
-        null=False,
+        null=True,
         help_text="default image to text model ID",
         index=True)
     rerank_id = CharField(
@@ -728,9 +742,9 @@ class TenantLLM(DataBaseModel):
         index=True)
     llm_name = CharField(
         max_length=128,
-        null=True,
+        null=False,
         help_text="LLM name",
-        default="A",
+        default="DeepSeek",
         index=True)
     api_key = CharField(max_length=1024, null=True, help_text="API KEY", index=True)
     api_base = CharField(max_length=255, null=True, help_text="API Base")
@@ -914,7 +928,7 @@ class File(DataBaseModel):
         help_text="where dose this document come from", index=True)
 
     class Meta:
-        db_table = "file"
+        db_table = "FILES"
 
 
 class File2Document(DataBaseModel):
@@ -1103,7 +1117,7 @@ class UserCanvasVersion(DataBaseModel):
 def migrate_db():
     migrator = DatabaseMigrator[settings.DATABASE_TYPE.upper()].value(DB)
     try:
-        migrate(migrator.add_column("file", "source_type", CharField(max_length=128, null=False, default="A", help_text="where dose this document come from", index=True)))
+        migrate(migrator.add_column("files", "source_type", CharField(max_length=128, null=False, default="A", help_text="where dose this document come from", index=True)))
     except Exception:
         pass
     try:
