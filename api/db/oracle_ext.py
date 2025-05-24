@@ -160,13 +160,13 @@ class OracleDatabase(Database):
         sql = sql.replace(" AS ", " ")
 
         # 处理 LIMIT 替换为 FETCH FIRST 和 OFFSET
-        if "LIMIT" in sql:
-            limit_index = sql.find("LIMIT")
+        if "LIMIT" in sql.upper():
+            limit_index = sql.upper().find("LIMIT")
             limit_value = sql[limit_index + len("LIMIT"):].strip()
             limit_placeholder = None
             offset_placeholder = None
-            if "OFFSET" in limit_value:
-                offset_index = limit_value.find("OFFSET")
+            if "OFFSET" in limit_value.upper():
+                offset_index = limit_value.upper().find("OFFSET")
                 offset_part = limit_value[offset_index + len("OFFSET"):].strip()
                 limit_part = limit_value[:offset_index].strip()
                 # 提取 LIMIT 和 OFFSET 后面的占位符序号
@@ -190,11 +190,10 @@ class OracleDatabase(Database):
         logger.debug((sql, params))
         cursor = self.cursor()
 
-        result = None
         try:
             cursor.execute(sql, params or ())
             # 对于 INSERT、UPDATE、DELETE 语句，需要提交事务
-            if sql.strip().startswith(('INSERT', 'UPDATE', 'DELETE')):
+            if sql.strip().upper().startswith(('INSERT', 'UPDATE', 'DELETE')):
                 cursor.connection.commit()
         except oracle.Error as e:
             # 打印 SQL 信息和参数

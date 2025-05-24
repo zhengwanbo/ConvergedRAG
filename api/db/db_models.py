@@ -928,7 +928,7 @@ class File(DataBaseModel):
         help_text="where dose this document come from", index=True)
 
     class Meta:
-        db_table = "FILES"
+        db_table = "files"
 
 
 class File2Document(DataBaseModel):
