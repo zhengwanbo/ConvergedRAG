@@ -20,7 +20,7 @@ from playhouse.pool import PooledDatabase
 from playhouse.migrate import SchemaMigrator
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(levelname)s - %(filename)s:%(lineno)d - %(message)s'
 )
 logger = logging.getLogger('oracle_ext')
@@ -182,7 +182,7 @@ class OracleDatabase(Database):
                 sql = sql[:limit_index] + f"FETCH FIRST {limit_value} ROWS ONLY"
 
             # 根据占位符序号调整参数顺序
-            if limit_placeholder and offset_placeholder and params:
+                if limit_placeholder and offset_placeholder and params:
                 limit_index_in_params = limit_placeholder - 1
                 offset_index_in_params = offset_placeholder - 1
                 params[limit_index_in_params], params[offset_index_in_params] = params[offset_index_in_params], params[limit_index_in_params]

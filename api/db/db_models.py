@@ -970,7 +970,8 @@ class Task(DataBaseModel):
     digest = TextField(null=True, help_text="task digest", default="")
     chunk_ids = LongTextField(null=True, help_text="chunk ids", default="")
 
-
+    class Meta:
+        db_table = "task"
 class Dialog(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     tenant_id = CharField(max_length=32, null=False, index=True)
