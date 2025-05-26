@@ -204,6 +204,24 @@ class OracleDatabase(Database):
         sql, params = ctx.sql(query).query()
         return self.execute_sql(sql, params)
 
+    def insert(self, insert=None, columns=None, **kwargs):
+        if kwargs:
+            insert = {} if insert is None else insert
+            src = self if self._columns else self.c
+            for key, value in kwargs.items():
+                insert[getattr(src, key)] = value
+        return Insert(self, insert=insert, columns=columns)
+
+    def delete(self):
+        return Delete(self)
+
+    def update(self, update=None, **kwargs):
+        if kwargs:
+            update = {} if update is None else update
+            for key, value in kwargs.items():
+                src = self if self._columns else self.c
+                update[getattr(src, key)] = value
+        return Update(self, update=update)
     def conflict_statement(self, on_conflict, query):
         return
 
@@ -283,6 +301,27 @@ class OracleDatabase(Database):
 
         return NodeList(parts)
 
+    def get_tables(self, schema=None):
+        # """获取指定 schema 中的所有表名（Oracle 版本）"""
+        # 使用 ALL_TABLES 视图查询表信息
+        # 注意：ORACLE 中表名默认是大写的，除非创建时使用了双引号
+        query = (
+            "SELECT table_name "
+            "FROM all_tables "
+            "WHERE owner = NVL(:schema, sys_context('USERENV', 'CURRENT_SCHEMA')) "
+            "ORDER BY table_name"
+        )
+        # 执行查询并获取结果
+        cursor = self.execute_sql(query, {"schema": schema})
+        # 提取表名列表（Oracle 返回的表名默认是大写的）
+        return [table[0] for table in cursor.fetchall()]
+
+    def _create_context(self, **kwargs):
+        context = super()._create_context(**kwargs)
+        # 设置 Oracle 特定的参数绑定格式
+        context.param = ':%d'
+        context.quote = "'"
+        return context
     def _iterate(self, cache=True):
         # 检查游标是否处于可获取结果的状态
         row = self.cursor.fetchone()
