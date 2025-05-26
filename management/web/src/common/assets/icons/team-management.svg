@@ -1,0 +1,21 @@
+<svg class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+
+<!-- 中心领导者 -->
+<path d="M512 256a128 128 0 1 1 0 256 128 128 0 0 1 0-256z" fill="#4D90FE"/>
+<path d="M416 512h192l48 320H368z" fill="#4D90FE"/>
+
+<!-- 左侧成员 -->
+<path d="M256 384a96 96 0 1 1 0 192 96 96 0 0 1 0-192z" fill="#3B78E7"/>
+<path d="M192 576h128l32 256H160z" fill="#3B78E7"/>
+
+<!-- 右侧成员 -->
+<path d="M768 384a96 96 0 1 1 0 192 96 96 0 0 1 0-192z" fill="#3B78E7"/>
+<path d="M704 576h128l32 256H672z" fill="#3B78E7"/>
+
+<!-- 连接弧线 -->
+<path d="M320 448Q416 384 512 384T704 448" 
+      stroke="#4D90FE" 
+      stroke-width="16" 
+      fill="none"/>
+
+</svg>
