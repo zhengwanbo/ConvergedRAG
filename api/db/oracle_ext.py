@@ -127,9 +127,6 @@ class OracleDatabase(Database):
         # Oracle 使用单引号作为标识符引用
         return "'"
 
-    def compiler(self):
-        return OracleCompiler(self)
-
     def get_binary_type(self):
         return oracle.BLOB
 
@@ -148,9 +145,6 @@ class OracleDatabase(Database):
             self.cursor().execute('COMMIT')
 
     def execute_sql(self, sql, params=None, commit=None):
-        if commit is not None:
-            __deprecated__('"commit" has been deprecated and is a no-op.')
-
         # 将 :%D 替换为 :1, :2, :3... 格式
         if params and isinstance(params, (list, tuple)):
             for i in range(len(params)):
@@ -181,8 +175,8 @@ class OracleDatabase(Database):
             else:
                 sql = sql[:limit_index] + f"FETCH FIRST {limit_value} ROWS ONLY"
 
-            # 根据占位符序号调整参数顺序
-                if limit_placeholder and offset_placeholder and params:
+            # 根据占位符序号调整参数顺序1
+            if limit_placeholder and offset_placeholder and params:
                 limit_index_in_params = limit_placeholder - 1
                 offset_index_in_params = offset_placeholder - 1
                 params[limit_index_in_params], params[offset_index_in_params] = params[offset_index_in_params], params[limit_index_in_params]
@@ -206,31 +200,9 @@ class OracleDatabase(Database):
 
 
     def execute(self, query, commit=None, **context_options):
-        if commit is not None:
-            __deprecated__('"commit" has been deprecated and is a no-op.')
         ctx = self.get_sql_context(**context_options)
         sql, params = ctx.sql(query).query()
         return self.execute_sql(sql, params)
-
-
-    def insert(self, insert=None, columns=None, **kwargs):
-        if kwargs:
-            insert = {} if insert is None else insert
-            src = self if self._columns else self.c
-            for key, value in kwargs.items():
-                insert[getattr(src, key)] = value
-        return Insert(self, insert=insert, columns=columns)
-
-    def delete(self):
-        return Delete(self)
-
-    def update(self, update=None, **kwargs):
-        if kwargs:
-            update = {} if update is None else update
-            for key, value in kwargs.items():
-                src = self if self._columns else self.c
-                update[getattr(src, key)] = value
-        return Update(self, update=update)
 
     def conflict_statement(self, on_conflict, query):
         return
@@ -311,16 +283,10 @@ class OracleDatabase(Database):
 
         return NodeList(parts)
 
-    def _create_context(self, **kwargs):
-        context = super()._create_context(**kwargs)
-        # 设置 Oracle 特定的参数绑定格式
-        context.param = ':%d'
-        context.quote = "'"
-        return context
-
     def _iterate(self, cache=True):
         # 检查游标是否处于可获取结果的状态
         row = self.cursor.fetchone()
+
         if row is None:
             self.populated = True
             self.cursor.close()
