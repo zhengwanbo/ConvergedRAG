@@ -14,7 +14,7 @@
         "important_tks": {"type": "varchar2(1024)", "default": ""},
         "question_kwd": {"type": "varchar2(2048)", "default": "", "analyzer": "whitespace"},
         "question_tks": {"type": "varchar2(2048)", "default": "", "analyzer": "whitespace"},
-        "content_with_weight": {"type": "varchar2(4096)", "default": ""},
+        "content_with_weight": {"type": "varchar2(4000)", "default": ""},
         "content_ltks": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
         "content_sm_ltks": {"type": "varchar2(2048)", "default": ""},
         "authors_tks": {"type": "varchar2(1024)", "default": ""},
@@ -28,7 +28,7 @@
         "rank_flt": {"type": "float", "default": 0},
         "available_int": {"type": "integer", "default": 1},
         "knowledge_graph_kwd": {"type": "varchar2(2048)", "default": ""},
-        "entities_kwd": {"type": "varchar2(4096)", "default": "", "analyzer": "whitespace"},
+        "entities_kwd": {"type": "varchar2(2048)", "default": "", "analyzer": "whitespace"},
         "pagerank_fea": {"type": "integer", "default":  0},
         "tag_feas": {"type": "varchar2(1024)", "default":  ""},
 
