@@ -1,11 +1,14 @@
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { SegmentedValue } from '@/components/ui/segmented';
+import { Container } from '@/components/ui/container';
+import { Segmented, SegmentedValue } from '@/components/ui/segmented';
 import { useTranslate } from '@/hooks/common-hooks';
 import { useNavigatePage } from '@/hooks/logic-hooks/navigate-hooks';
 import { useNavigateWithFromState } from '@/hooks/route-hook';
 import { cn } from '@/lib/utils';
 import { Routes } from '@/routes';
 import {
+  ChevronDown,
   Cpu,
   File,
   Github,
@@ -14,6 +17,7 @@ import {
   MessageSquareText,
   Search,
   Star,
+  Zap,
 } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { useLocation } from 'umi';
@@ -81,7 +85,7 @@ export function Header() {
           className="bg-colors-background-inverse-standard"
         >
           <Github />
-          50.5k stars
+          21.5k stars
           <Star />
         </Button>
       </div>
@@ -100,8 +104,39 @@ export function Header() {
             })}
           />
         </Button>
+        <div className="h-8 w-[1px] bg-colors-outline-neutral-strong"></div>
+        <Segmented
+          options={options}
+          value={currentPath}
+          onChange={handleChange}
+          className="bg-colors-background-inverse-standard text-backgroundInverseStandard-foreground"
+        ></Segmented>
       </div>
-      {/* 保留右侧用户信息部分 */}
+      <div className="flex items-center gap-4">
+        <Container className="bg-colors-background-inverse-standard hidden xl:flex">
+          V 0.13.0
+          <Button variant="secondary" className="size-8">
+            <ChevronDown />
+          </Button>
+        </Container>
+        <Container className="px-3 py-2 bg-colors-background-inverse-standard">
+          <Avatar
+            className="w-[30px] h-[30px] cursor-pointer"
+            onClick={navigateToProfile}
+          >
+            <AvatarImage src="https://github.com/shadcn.png" />
+            <AvatarFallback>CN</AvatarFallback>
+          </Avatar>
+          <span className="max-w-14 truncate"> yifanwu92@gmail.com</span>
+          <Button
+            variant="destructive"
+            className="py-[2px] px-[8px] h-[23px] rounded-[4px]"
+          >
+            <Zap />
+            Pro
+          </Button>
+        </Container>
+      </div>
     </section>
   );
 }

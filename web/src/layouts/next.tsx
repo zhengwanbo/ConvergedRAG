@@ -71,8 +71,8 @@ export default function NextLayout() {
   );
 
   const selectedKey = useMemo(() => {
-    //const basePath = pathname.split('/')[1];
-    //const { logout } = useLogout();
+    const basePath = pathname.split('/')[1];
+    const { logout } = useLogout();
 
     return (
       menuItems.find((item) => pathname.startsWith(item.key))?.key ||

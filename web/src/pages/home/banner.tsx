@@ -21,7 +21,7 @@ export function Banner() {
   return (
     <section className="bg-[url('@/assets/banner.png')] bg-cover h-28 rounded-2xl  my-8 flex gap-8 justify-between">
       <div className="h-full text-3xl font-bold items-center inline-flex ml-6">
-        Welcome to ConvergedRAG
+        Welcome to RAGFlow
       </div>
       <div className="flex justify-between items-center gap-4 mr-5">
         <BannerCard></BannerCard>

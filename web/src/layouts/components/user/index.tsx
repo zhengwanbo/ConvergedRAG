@@ -2,13 +2,14 @@ import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
 import { Avatar } from 'antd';
 import React from 'react';
 import { history } from 'umi';
+
 import styles from '../../index.less';
 
 const App: React.FC = () => {
   const { data: userInfo } = useFetchUserInfo();
 
   const toSetting = () => {
-    history.push('/user');
+    history.push('/user/profile');
   };
 
   return (

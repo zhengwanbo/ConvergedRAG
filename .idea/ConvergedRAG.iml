@@ -14,6 +14,7 @@
       <excludeFolder url="file://$MODULE_DIR$/web/src/.umi/plugin-clickToComponent" />
       <excludeFolder url="file://$MODULE_DIR$/web/src/.umi/plugin-icons" />
       <excludeFolder url="file://$MODULE_DIR$/web/src/.umi/plugin-tailwindcss" />
+      <excludeFolder url="file://$MODULE_DIR$/logs" />
     </content>
     <orderEntry type="jdk" jdkName="ragflow" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

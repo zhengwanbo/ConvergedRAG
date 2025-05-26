@@ -29,6 +29,7 @@ const App: React.FC = () => {
   const navigate = useNavigateWithFromState();
   const { pathname } = useLocation();
   const { logout } = useLogout();
+
   const menuItems = useMemo(
     () => [
       {
@@ -64,7 +65,7 @@ const App: React.FC = () => {
           { key: '/user/profile', label: t('profile') },
           { key: '/user/password', label: t('password') },
           { key: '/user/team', label: t('team') },
-          { key: '/user/logout', label: t('logout'), onClick: logout() },
+          { key: '/user/logout', label: t('logout') },
         ],
       },
       {
@@ -102,7 +103,6 @@ const App: React.FC = () => {
           width={200}
           style={{
             background: colorBgContainer,
-            borderRadius: borderRadiusLG,
             height: '100%',
             overflow: 'auto',
           }}
@@ -134,9 +134,7 @@ const App: React.FC = () => {
             flex: 1,
             padding: '24px',
             background: colorBgContainer,
-            borderRadius: borderRadiusLG,
             overflow: 'auto',
-            display: 'flex',
           }}
         >
           <Outlet />
