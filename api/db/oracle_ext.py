@@ -227,13 +227,27 @@ class OracleDatabase(Database):
 
     def conflict_update(self, oc, query):
         action = oc._action.lower() if oc._action else ''
-        if action in ('ignore', 'nothing'):
-            if hasattr(query, 'model'):
-                table = query.model._meta.table_name
-            else:
-                table = query._from[0].name if hasattr(query, '_from') else None
 
-            # Handle both string and dict cases for _insert
+        # 只保留 MERGE 逻辑，移除 INSERT
+        if action not in ('ignore', 'update'):
+            return
+
+        # 获取表名
+        if hasattr(query, 'model'):
+            table = query.model._meta.table_name
+        else:
+            table = query._from[0].name if hasattr(query, '_from') else None
+
+        # 解析更新列（确保至少有一个列）
+        update_cols = []
+        for col in (oc._update or []):
+            if isinstance(col, (list, tuple)):
+                update_cols.append(f'"{col[0]}" = {col[1]}')
+            else:
+                update_cols.append(f'"{col}" = SRC."{col}"')
+
+        # 如果没有指定更新列，默认更新所有列（除了冲突键）
+        if not update_cols:
             insert_cols = []
             for col in query._insert:
                 if isinstance(col, dict):
@@ -241,37 +255,15 @@ class OracleDatabase(Database):
                 else:
                     insert_cols.append(col)
 
-            parts = [
-                SQL('MERGE INTO'),
-                Entity(table),
-                SQL('USING (SELECT 1 FROM DUAL)'),
-                SQL('ON (%s)' % ' AND '.join(
-                    f'{col}=EXCLUDED.{col}'
-                    for col in oc._conflict_target
-                )),
-                SQL('WHEN NOT MATCHED THEN'),
-                SQL('INSERT (%s) VALUES (%s)' % (
-                    ', '.join(insert_cols),
-                    ', '.join(f':{i + 1}' for i in range(len(query._values)))
-                ))
-            ]
-            return NodeList(parts)
-        elif action and action != 'update':
-            raise ValueError('Oracle only supports "ignore" or "update" for conflict resolution')
+            # 排除冲突键
+            for col in oc._conflict_target:
+                if col in insert_cols:
+                    insert_cols.remove(col)
 
-        if hasattr(query, 'model'):
-            table = query.model._meta.table_name
-        else:
-            table = query._from[0].name if hasattr(query, '_from') else None
+            # 生成默认更新语句
+            update_cols = [f'"{col}" = SRC."{col}"' for col in insert_cols]
 
-        update_cols = []
-        for col in (oc._update or []):
-            if isinstance(col, (list, tuple)):
-                update_cols.append(f'{col[0]} = {col[1]}')
-            else:
-                update_cols.append(f'{col} = EXCLUDED.{col}')
-
-        # Handle both string and dict cases for _insert
+        # 解析插入列
         insert_cols = []
         for col in query._insert:
             if isinstance(col, dict):
@@ -279,24 +271,28 @@ class OracleDatabase(Database):
             else:
                 insert_cols.append(col)
 
+        # 生成正确的 MERGE 语句
         parts = [
             SQL('MERGE INTO'),
             Entity(table),
-            SQL('USING (SELECT %s FROM DUAL)' % ', '.join(
-                f':{i + 1} AS {col}'
+            SQL('USING (SELECT'),
+            SQL(', '.join(
+                f':{i + 1} AS "{col}"'  # 使用 AS 关键字并添加双引号
                 for i, col in enumerate(insert_cols)
             )),
-            SQL('ON (%s)' % ' AND '.join(
-                f'{col}=EXCLUDED.{col}'
+            SQL('FROM DUAL) SRC ON ('),
+            SQL(' AND '.join(
+                f'"{table}"."{col}" = SRC."{col}"'  # 添加双引号
                 for col in oc._conflict_target
             )),
-            SQL('WHEN MATCHED THEN'),
-            SQL('UPDATE SET %s' % ', '.join(update_cols)),
-            SQL('WHEN NOT MATCHED THEN'),
-            SQL('INSERT (%s) VALUES (%s)' % (
-                ', '.join(insert_cols),
-                ', '.join(f'EXCLUDED.{col}' for col in insert_cols)
-            ))
+            SQL(')'),
+            SQL('WHEN MATCHED THEN UPDATE SET'),
+            SQL(', '.join(update_cols)),
+            SQL('WHEN NOT MATCHED THEN INSERT ('),
+            SQL(', '.join(f'"{col}"' for col in insert_cols)),  # 添加双引号
+            SQL(') VALUES ('),
+            SQL(', '.join(f'SRC."{col}"' for col in insert_cols)),  # 添加双引号
+            SQL(')')
         ]
 
         return NodeList(parts)

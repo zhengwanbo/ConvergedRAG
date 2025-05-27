@@ -16,7 +16,7 @@
         "question_tks": {"type": "varchar2(2048)", "default": "", "analyzer": "whitespace"},
         "content_with_weight": {"type": "varchar2(4000)", "default": ""},
         "content_ltks": {"type": "CLOB", "default": "", "analyzer": "whitespace"},
-        "content_sm_ltks": {"type": "varchar2(2048)", "default": ""},
+        "content_sm_ltks": {"type": "varchar2(4000)", "default": ""},
         "authors_tks": {"type": "varchar2(1024)", "default": ""},
         "authors_sm_tks": {"type": "varchar2(1024)", "default": ""},
         "page_num_int": {"type": "varchar2(1024)", "default": ""},

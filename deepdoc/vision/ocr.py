@@ -545,7 +545,7 @@ class OCR:
                                               local_dir_use_symlinks=False)
                 
                 if PARALLEL_DEVICES is not None:
-                    assert PARALLEL_DEVICES > 0, "Number of devices must be >= 1"
+                    assert PARALLEL_DEVICES >= 0, "Number of devices must be >= 1"
                     self.text_detector = []
                     self.text_recognizer = []
                     for device_id in range(PARALLEL_DEVICES):

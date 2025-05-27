@@ -1018,8 +1018,8 @@ class Dialog(DataBaseModel):
 
     rerank_id = CharField(
         max_length=128,
-        null=False,
-        default="bge-m3",
+        null=True,
+        default="BAAI/bge-reranker-v2-m3",
         help_text="default rerank model ID")
 
     kb_ids = JSONField(null=False, default=[])
@@ -1126,7 +1126,7 @@ def migrate_db():
     except Exception:
         pass
     try:
-        migrate(migrator.add_column("dialog", "rerank_id", CharField(max_length=128, null=False, default="", help_text="default rerank model ID")))
+        migrate(migrator.add_column("dialog", "rerank_id", CharField(max_length=128, null=False, default="BAAI/bge-reranker-v2-m3", help_text="default rerank model ID")))
     except Exception:
         pass
     try:
