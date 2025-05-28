@@ -322,43 +322,43 @@ def getversion( version_id):
     except Exception as e:
         return get_json_result(data=f"Error getting history file: {e}")
 
-    @manager.route('/listteam', methods=['GET'])  # noqa: F821
-    @login_required
-    def list_kbs():
-        keywords = request.args.get("keywords", "")
-        page_number = int(request.args.get("page", 1))
-        items_per_page = int(request.args.get("page_size", 150))
-        orderby = request.args.get("orderby", "create_time")
-        desc = request.args.get("desc", True)
-        try:
-            tenants = TenantService.get_joined_tenants_by_user_id(current_user.id)
-            kbs, total = UserCanvasService.get_by_tenant_ids(
-                [m["tenant_id"] for m in tenants], current_user.id, page_number,
-                items_per_page, orderby, desc, keywords)
-            return get_json_result(data={"kbs": kbs, "total": total})
-        except Exception as e:
-            return server_error_response(e)
+@manager.route('/listteam', methods=['GET'])  # noqa: F821
+@login_required
+def list_kbs():
+    keywords = request.args.get("keywords", "")
+    page_number = int(request.args.get("page", 1))
+    items_per_page = int(request.args.get("page_size", 150))
+    orderby = request.args.get("orderby", "create_time")
+    desc = request.args.get("desc", True)
+    try:
+        tenants = TenantService.get_joined_tenants_by_user_id(current_user.id)
+        kbs, total = UserCanvasService.get_by_tenant_ids(
+            [m["tenant_id"] for m in tenants], current_user.id, page_number,
+            items_per_page, orderby, desc, keywords)
+        return get_json_result(data={"kbs": kbs, "total": total})
+    except Exception as e:
+        return server_error_response(e)
 
-    @manager.route('/setting', methods=['POST'])  # noqa: F821
-    @validate_request("id", "title", "permission")
-    @login_required
-    def setting():
-        req = request.json
-        req["user_id"] = current_user.id
-        e, flow = UserCanvasService.get_by_id(req["id"])
-        if not e:
-            return get_data_error_result(message="canvas not found.")
-        flow = flow.to_dict()
-        flow["title"] = req["title"]
-        if req["description"]:
-            flow["description"] = req["description"]
-        if req["permission"]:
-            flow["permission"] = req["permission"]
-        if req["avatar"]:
-            flow["avatar"] = req["avatar"]
-        if not UserCanvasService.query(user_id=current_user.id, id=req["id"]):
-            return get_json_result(
-                data=False, message='Only owner of canvas authorized for this operation.',
-                code=RetCode.OPERATING_ERROR)
-        num = UserCanvasService.update_by_id(req["id"], flow)
-        return get_json_result(data=num)
+@manager.route('/setting', methods=['POST'])  # noqa: F821
+@validate_request("id", "title", "permission")
+@login_required
+def setting():
+    req = request.json
+    req["user_id"] = current_user.id
+    e, flow = UserCanvasService.get_by_id(req["id"])
+    if not e:
+        return get_data_error_result(message="canvas not found.")
+    flow = flow.to_dict()
+    flow["title"] = req["title"]
+    if req["description"]:
+        flow["description"] = req["description"]
+    if req["permission"]:
+        flow["permission"] = req["permission"]
+    if req["avatar"]:
+        flow["avatar"] = req["avatar"]
+    if not UserCanvasService.query(user_id=current_user.id, id=req["id"]):
+        return get_json_result(
+            data=False, message='Only owner of canvas authorized for this operation.',
+            code=RetCode.OPERATING_ERROR)
+    num = UserCanvasService.update_by_id(req["id"], flow)
+    return get_json_result(data=num)
