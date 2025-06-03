@@ -468,8 +468,8 @@ def list_session(tenant_id, chat_id):
             while message_num < len(messages):
                 if message_num != 0 and messages[message_num]["role"] != "user":
                     chunk_list = []
-                    if "chunks" in conv["reference"][chunk_num]:
-                        chunks = conv["reference"][chunk_num]["chunks"]
+                    if "chunks" in conv["reference"][message_num]:
+                        chunks = conv["reference"][message_num]["chunks"]
                         for chunk in chunks:
                             new_chunk = {
                                 "id": chunk.get("chunk_id", chunk.get("id")),

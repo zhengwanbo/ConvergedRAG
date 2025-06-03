@@ -37,7 +37,6 @@ from timeit import default_timer as timer
 
 from rag.utils.redis_conn import REDIS_CONN
 
-
 @manager.route("/version", methods=["GET"])  # noqa: F821
 @login_required
 def version():
@@ -210,7 +209,6 @@ def new_token():
             "create_date": datetime_format(datetime.now()),
             "update_time": None,
             "update_date": None,
-            "dialog_id": "unlink"
         }
 
         if not APITokenService.save(**obj):

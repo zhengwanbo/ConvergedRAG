@@ -70,17 +70,22 @@ class KnowledgebaseService:
             # results
             for result in results:
                 # 处理空描述
-                if not result.get('DESCRIPTION'):
-                    result['DESCRIPTION'] = "暂无描述"
+                # 确保使用正确的列名（如 "DESCRIPTION"）
+                if not result.get("DESCRIPTION"):  # 使用 get() 避免 KeyError
+                    result["DESCRIPTION"] = "暂无描述"
+
                 # 处理时间格式
-                if result.get('CREATE_DATE'):
-                    if isinstance(result['CREATE_DATE'], datetime):
-                        result['CREATE_DATE'] = result['CREATE_DATE'].strftime('%Y-%m-%d %H:%M:%S')
-                    elif isinstance(result['CREATE_DATE'], str):
+                if result.get("CREATE_DATE"):
+                    create_date = result["CREATE_DATE"]
+                    if isinstance(create_date, datetime):
+                        result["CREATE_DATE"] = create_date.strftime('%Y-%m-%d %H:%M:%S')
+                    elif isinstance(create_date, str):
                         try:
-                            datetime.strptime(result['CREATE_DATE'], '%Y-%m-%d %H:%M:%S')
+                            # 验证字符串格式并转换
+                            parsed_date = datetime.strptime(create_date, '%Y-%m-%d %H:%M:%S')
+                            result["CREATE_DATE"] = parsed_date.strftime('%Y-%m-%d %H:%M:%S')
                         except ValueError:
-                            result['CREATE_DATE'] = ""
+                            result["CREATE_DATE"] = ""  # 格式错误时置空
 
             # 获取总数
             count_query = "SELECT COUNT(*) as total FROM knowledgebase"
@@ -92,6 +97,7 @@ class KnowledgebaseService:
             cursor.close()
             conn.close()
 
+            logger.info("get_knowledgebase_list results: %s", results)
             return {
                 'list': results,
                 'total': total

@@ -1,3 +1,4 @@
+//modify by zwb
 export enum Routes {
   Login = '/login',
   Home = '/home',
@@ -168,7 +169,7 @@ const routes = [
   {
     path: Routes.Home,
     layout: false,
-    component: '@/layouts',
+    component: '@/layouts/next',
     routes: [
       {
         path: Routes.Home,

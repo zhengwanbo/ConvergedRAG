@@ -33,7 +33,7 @@ class ExeSQLParam(GenerateParam):
 
     def __init__(self):
         super().__init__()
-        self.db_type = "mysql"
+        self.db_type = "oracle"
         self.database = ""
         self.username = ""
         self.host = ""
@@ -62,7 +62,7 @@ class ExeSQL(Generate, ABC):
     component_name = "ExeSQL"
 
     def _refactor(self, ans):
-        ans = re.sub(r"<think>.*</think>", "", ans, flags=re.DOTALL)
+        ans = re.sub(r"^.*</think>", "", ans, flags=re.DOTALL)
         match = re.search(r"```sql\s*(.*?)\s*```", ans, re.DOTALL)
         if match:
             ans = match.group(1)  # Query content

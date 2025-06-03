@@ -430,7 +430,7 @@ class RagTokenizer:
                 res.append(" ".join(self.sortTks_(tkslist)[0][0]))
 
         res = " ".join(res)
-        #logging.debug("[TKS] {}".format(self.merge_(res)))
+        logging.debug("[TKS] {}".format(self.merge_(res)))
         return self.merge_(res)
 
     def fine_grained_tokenize(self, tks):

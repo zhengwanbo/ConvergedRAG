@@ -342,37 +342,39 @@ def with_retry(max_retries=3, retry_delay=1.0):
 class PostgresDatabaseLock:
     def __init__(self, lock_name, timeout=10, db=None):
         self.lock_name = lock_name
+        self.lock_id = int(hashlib.md5(lock_name.encode()).hexdigest(), 16) % (2**31-1)
         self.timeout = int(timeout)
         self.db = db if db else DB
 
+    @with_retry(max_retries=3, retry_delay=1.0)
     def lock(self):
-        cursor = self.db.execute_sql("SELECT pg_try_advisory_lock(%s)", self.timeout)
+        cursor = self.db.execute_sql("SELECT pg_try_advisory_lock(%s)", (self.lock_id,))
         ret = cursor.fetchone()
         if ret[0] == 0:
-            raise Exception(f'acquire postgres lock {self.lock_name} timeout')
+            raise Exception(f"acquire postgres lock {self.lock_name} timeout")
         elif ret[0] == 1:
             return True
         else:
-            raise Exception(f'failed to acquire lock {self.lock_name}')
+            raise Exception(f"failed to acquire lock {self.lock_name}")
 
+    @with_retry(max_retries=3, retry_delay=1.0)
     def unlock(self):
-        cursor = self.db.execute_sql("SELECT pg_advisory_unlock(%s)", self.timeout)
+        cursor = self.db.execute_sql("SELECT pg_advisory_unlock(%s)", (self.lock_id,))
         ret = cursor.fetchone()
         if ret[0] == 0:
-            raise Exception(
-                f'postgres lock {self.lock_name} was not established by this thread')
+            raise Exception(f"postgres lock {self.lock_name} was not established by this thread")
         elif ret[0] == 1:
             return True
         else:
-            raise Exception(f'postgres lock {self.lock_name} does not exist')
+            raise Exception(f"postgres lock {self.lock_name} does not exist")
 
     def __enter__(self):
-        if isinstance(self.db, PostgresDatabaseLock):
+        if isinstance(self.db, PooledPostgresqlDatabase):
             self.lock()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        if isinstance(self.db, PostgresDatabaseLock):
+        if isinstance(self.db, PooledPostgresqlDatabase):
             self.unlock()
 
     def __call__(self, func):
@@ -390,29 +392,28 @@ class MysqlDatabaseLock:
         self.timeout = int(timeout)
         self.db = db if db else DB
 
+    @with_retry(max_retries=3, retry_delay=1.0)
     def lock(self):
         # SQL parameters only support %s format placeholders
-        cursor = self.db.execute_sql(
-            "SELECT GET_LOCK(%s, %s)", (self.lock_name, self.timeout))
+        cursor = self.db.execute_sql("SELECT GET_LOCK(%s, %s)", (self.lock_name, self.timeout))
         ret = cursor.fetchone()
         if ret[0] == 0:
-            raise Exception(f'acquire mysql lock {self.lock_name} timeout')
+            raise Exception(f"acquire mysql lock {self.lock_name} timeout")
         elif ret[0] == 1:
             return True
         else:
-            raise Exception(f'failed to acquire lock {self.lock_name}')
+            raise Exception(f"failed to acquire lock {self.lock_name}")
 
+    @with_retry(max_retries=3, retry_delay=1.0)
     def unlock(self):
-        cursor = self.db.execute_sql(
-            "SELECT RELEASE_LOCK(%s)", (self.lock_name,))
+        cursor = self.db.execute_sql("SELECT RELEASE_LOCK(%s)", (self.lock_name,))
         ret = cursor.fetchone()
         if ret[0] == 0:
-            raise Exception(
-                f'mysql lock {self.lock_name} was not established by this thread')
+            raise Exception(f"mysql lock {self.lock_name} was not established by this thread")
         elif ret[0] == 1:
             return True
         else:
-            raise Exception(f'mysql lock {self.lock_name} does not exist')
+            raise Exception(f"mysql lock {self.lock_name} does not exist")
 
     def __enter__(self):
         if isinstance(self.db, PooledMySQLDatabase):
@@ -598,7 +599,7 @@ class Tenant(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     name = CharField(max_length=100, null=True, help_text="Tenant name", index=True)
     public_key = CharField(max_length=255, null=True, index=True)
-    llm_id = CharField(max_length=128, null=True, help_text="default llm ID", index=True)
+    llm_id = CharField(max_length=128, null=False, help_text="default llm ID", index=True)
     embd_id = CharField(
         max_length=128,
         null=False,
@@ -746,7 +747,7 @@ class TenantLLM(DataBaseModel):
         help_text="LLM name",
         default="DeepSeek",
         index=True)
-    api_key = CharField(max_length=1024, null=True, help_text="API KEY", index=True)
+    api_key = CharField(max_length=2048, null=True, help_text="API KEY", index=True)
     api_base = CharField(max_length=255, null=True, help_text="API Base")
     max_tokens = IntegerField(default=8192, index=True)
     used_tokens = IntegerField(default=0, index=True)
@@ -972,6 +973,7 @@ class Task(DataBaseModel):
 
     class Meta:
         db_table = "task"
+
 class Dialog(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     tenant_id = CharField(max_length=32, null=False, index=True)

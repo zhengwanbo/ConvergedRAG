@@ -115,6 +115,7 @@ def getsse(canvas_id):
 def run():
     req = request.json
     stream = req.get("stream", True)
+    running_hint_text = req.get("running_hint_text", "")
     e, cvs = UserCanvasService.get_by_id(req["id"])
     if not e:
         return get_data_error_result(message="canvas not found.")
@@ -140,7 +141,7 @@ def run():
         def sse():
             nonlocal answer, cvs
             try:
-                for ans in canvas.run(stream=True):
+                for ans in canvas.run(running_hint_text = running_hint_text, stream=True):
                     if ans.get("running_status"):
                         yield "data:" + json.dumps({"code": 0, "message": "",
                                                     "data": {"answer": ans["content"],
@@ -178,7 +179,7 @@ def run():
         resp.headers.add_header("Content-Type", "text/event-stream; charset=utf-8")
         return resp
 
-    for answer in canvas.run(stream=False):
+    for answer in canvas.run(running_hint_text = running_hint_text, stream=False):
         if answer.get("running_status"):
             continue
         final_ans["content"] = "\n".join(answer["content"]) if "content" in answer else ""
@@ -345,7 +346,7 @@ def list_kbs():
 def setting():
     req = request.json
     req["user_id"] = current_user.id
-    e, flow = UserCanvasService.get_by_id(req["id"])
+    e,flow = UserCanvasService.get_by_id(req["id"])
     if not e:
         return get_data_error_result(message="canvas not found.")
     flow = flow.to_dict()

@@ -78,6 +78,7 @@ class FulltextQueryer:
             " ",
             rag_tokenizer.tradi2simp(rag_tokenizer.strQ2B(txt.lower())),
         ).strip()
+        otxt = txt
         txt = FulltextQueryer.rmWWW(txt)
 
         if not self.isChinese(txt):
@@ -188,8 +189,6 @@ class FulltextQueryer:
                     break
 
                 tk = FulltextQueryer.subSpecialChar(tk)
-                # add by walter jin
-                temp = tk
                 if tk.find(" ") > 0:
                     tk = '"%s"' % tk
                 if tk_syns:
@@ -198,31 +197,13 @@ class FulltextQueryer:
                     tk = f'{tk} OR "%s" OR ("%s"~2)^0.5' % (" ".join(sm), " ".join(sm))
                 if tk.strip():
                     tms.append((tk, w))
-                    # add by walter jin
-                    if tk_syns or sm:
-                        if tk_syns:
-                            extra_info["tms"].append( {f"{temp} ACCUM %s" % (" ACCUM ".join(tk_syns)).replace('"',''):normalization_weihht[w]})
-                    else:
-                        extra_info["tms"].append({tk:normalization_weihht[w]})
-
-
 
             tms = " ".join([f"({t})^{w}" for t, w in tms])
 
             if len(twts) > 1:
                 tms += ' ("%s"~2)^1.5' % rag_tokenizer.tokenize(tt)
-                # short phrase can't be used in Oracle Full text search
-                #another_tms.append({rag_tokenizer.tokenize(tt): 1.5})
 
             syns = " OR ".join(
-                [
-                    '"%s"'
-                    % rag_tokenizer.tokenize(FulltextQueryer.subSpecialChar(s))
-                    for s in syns
-                ]
-            )
-            #add by walter jin
-            extra_syns = " ACCUM ".join(
                 [
                     '"%s"'
                     % rag_tokenizer.tokenize(FulltextQueryer.subSpecialChar(s))
@@ -239,8 +220,10 @@ class FulltextQueryer:
 
         if qs:
             query = " OR ".join([f"({t})" for t in qs if t])
+            if not query:
+                query = otxt
             return MatchTextExpr(
-                self.query_fields, query, 100, {"minimum_should_match": min_match},extra_info
+                self.query_fields, query, 100, {"minimum_should_match": min_match}
             ), keywords
         return None, keywords
 
@@ -276,11 +259,11 @@ class FulltextQueryer:
         s = 1e-9
         for k, v in qtwt.items():
             if k in dtwt:
-                s += v * dtwt[k]
+                s += v #* dtwt[k]
         q = 1e-9
         for k, v in qtwt.items():
-            q += v * v
-        return math.sqrt(3. * (s / q / math.log10( len(dtwt.keys()) + 512 )))
+            q += v #* v
+        return s/q #math.sqrt(3. * (s / q / math.log10( len(dtwt.keys()) + 512 )))
 
     def paragraph(self, content_tks: str, keywords: list = [], keywords_topn=30):
         if isinstance(content_tks, str):

@@ -1,3 +1,5 @@
+// modify by zwb for oracledb
+
 import { ReactComponent as FileIcon } from '@/assets/svg/file-management.svg';
 import { ReactComponent as GraphIcon } from '@/assets/svg/graph.svg';
 import { ReactComponent as KnowledgeBaseIcon } from '@/assets/svg/knowledge-base.svg';

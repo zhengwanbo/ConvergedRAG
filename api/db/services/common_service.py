@@ -18,7 +18,7 @@ from datetime import datetime
 import peewee
 
 from api.db.db_models import DB
-from api.utils import datetime_format, current_timestamp, get_uuid
+from api.utils import current_timestamp, datetime_format, get_uuid
 
 
 class CommonService:
@@ -32,6 +32,7 @@ class CommonService:
     Attributes:
         model: The Peewee model class that this service operates on. Must be set by subclasses.
     """
+
     model = None
 
     @classmethod
@@ -257,6 +258,18 @@ class CommonService:
         # Returns:
         #     Number of records deleted
         return cls.model.delete().where(cls.model.id == pid).execute()
+
+    @classmethod
+    @DB.connection_context()
+    def delete_by_ids(cls, pids):
+        # Delete multiple records by their IDs
+        # Args:
+        #     pids: List of record IDs
+        # Returns:
+        #     Number of records deleted
+        with DB.atomic():
+            res = cls.model.delete().where(cls.model.id.in_(pids)).execute()
+            return res
 
     @classmethod
     @DB.connection_context()

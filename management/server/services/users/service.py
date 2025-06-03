@@ -296,16 +296,15 @@ def create_user(user_data):
             # 为新用户复制最早用户的所有tenant_llm配置
             tenant_llm_insert_query = """
             INSERT INTO tenant_llm (
-                create_time, create_date, update_time, update_date, tenant_id,
+                create_time, create_date, update_time, update_date, tenant_id, 
                 llm_factory, model_type, llm_name, api_key, api_base, max_tokens, used_tokens
             ) VALUES (
-                TO_CHAR(:1),
-                :2,
-                TO_TIMESTAMP(:3, 'YYYY-MM-DD HH24:MI:SS'),
-                :4,
-                TO_TIMESTAMP(:5, 'YYYY-MM-DD HH24:MI:SS'),
-                :6,
-                :7, :8, :9, :10, :11, :12
+                :1,
+                TO_TIMESTAMP(:2, 'YYYY-MM-DD HH24:MI:SS'),
+                :3,
+                TO_TIMESTAMP(:4, 'YYYY-MM-DD HH24:MI:SS'),
+                TO_CHAR(:5),
+                :6, :7, :8, :9, :10, :11, :12
             )
             """
             
