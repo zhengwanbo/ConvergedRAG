@@ -210,6 +210,14 @@ class FulltextQueryer:
                     for s in syns
                 ]
             )
+            #add by walter jin
+            extra_syns = " ACCUM ".join(
+                [
+                    '"%s"'
+                    % rag_tokenizer.tokenize(FulltextQueryer.subSpecialChar(s))
+                    for s in syns
+                ]
+            )
             if syns and tms:
                 tms = f"({tms})^5 OR ({syns})^0.7"
                 extra_info["tms_total_weight"] = 5
