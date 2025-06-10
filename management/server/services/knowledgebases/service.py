@@ -22,18 +22,21 @@ logger = logging.getLogger(__name__)
 SEQUENTIAL_BATCH_TASKS = {}
 
 class KnowledgebaseService:
-    
-    # @classmethod
-    # def _get_db_connection(cls):
-    #     """创建数据库连接"""
-    #     return get_db_connection()
 
     @classmethod
-    def get_knowledgebase_list(cls, page=1, size=10, name=''):
+    def get_knowledgebase_list(cls, page=1, size=10, name="", sort_by="create_time", sort_order="desc"):
         """获取知识库列表"""
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+
+            # 验证排序字段
+            valid_sort_fields = ["name", "create_time", "create_date"]
+            if sort_by not in valid_sort_fields:
+                sort_by = "create_time"
+
+            # 构建排序子句
+            sort_clause = f"ORDER BY k.{sort_by} {sort_order.upper()}"
 
             query = """
                 SELECT 
@@ -58,7 +61,7 @@ class KnowledgebaseService:
             params["page_size"] = size
 
             # 日志记录（明确参数名和值）
-            logger.info("get_knowledgebase_list: %s", query)
+            logger.info("get_knowledgebase_list SQL: %s", query)
             logger.info("get_knowledgebase_list params: %s", params)
 
             # 使用命名参数执行
@@ -68,24 +71,14 @@ class KnowledgebaseService:
 
             logger.info("get_knowledgebase_list results: %s", results)
             # results
-            for result in results:
+            formatted_km = [{k.lower(): v for k, v in item.items()} for item in results]
+            for result in formatted_km:
                 # 处理空描述
                 # 确保使用正确的列名（如 "DESCRIPTION"）
-                if not result.get("DESCRIPTION"):  # 使用 get() 避免 KeyError
-                    result["DESCRIPTION"] = "暂无描述"
-
-                # 处理时间格式
-                if result.get("CREATE_DATE"):
-                    create_date = result["CREATE_DATE"]
-                    if isinstance(create_date, datetime):
-                        result["CREATE_DATE"] = create_date.strftime('%Y-%m-%d %H:%M:%S')
-                    elif isinstance(create_date, str):
-                        try:
-                            # 验证字符串格式并转换
-                            parsed_date = datetime.strptime(create_date, '%Y-%m-%d %H:%M:%S')
-                            result["CREATE_DATE"] = parsed_date.strftime('%Y-%m-%d %H:%M:%S')
-                        except ValueError:
-                            result["CREATE_DATE"] = ""  # 格式错误时置空
+                if not result.get("description"):  # 使用 get() 避免 KeyError
+                    result["description"] = "暂无描述"
+                if result.get("create_date"):
+                    result["create_date"] = result["create_date"].strftime("%Y-%m-%d %H:%M:%S")
 
             # 获取总数
             count_query = "SELECT COUNT(*) as total FROM knowledgebase"
@@ -97,9 +90,9 @@ class KnowledgebaseService:
             cursor.close()
             conn.close()
 
-            logger.info("get_knowledgebase_list results: %s", results)
+            logger.info("get_knowledgebase_list results: %s", formatted_km)
             return {
-                'list': results,
+                'list': formatted_km,
                 'total': total
             }
 
@@ -111,41 +104,57 @@ class KnowledgebaseService:
     @classmethod
     def get_knowledgebase_detail(cls, kb_id):
         """获取知识库详情"""
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        query = """
-            SELECT 
-                k.id, 
-                k.name, 
-                k.description, 
-                k.create_date,
-                k.update_date,
-                k.doc_num
-            FROM knowledgebase k
-            WHERE k.id = :id
-        """
-        cursor.execute(query, {'id': kb_id})
-        result = cursor.fetchone()
-        
-        if result:
-            # 处理空描述
-            if not result.get('DESCRIPTION'):
-                result['DESCRIPTION'] = "暂无描述"
-            # 处理时间格式
-            if result.get('CREATE_DATE'):
-                if isinstance(result['CREATE_DATE'], datetime):
-                    result['CREATE_DATE'] = result['CREATE_DATE'].strftime('%Y-%m-%d %H:%M:%S')
-                elif isinstance(result['CREATE_DATE'], str):
-                    try:
-                        datetime.strptime(result['CREATE_DATE'], '%Y-%m-%d %H:%M:%S')
-                    except ValueError:
-                        result['CREATE_DATE'] = ""
-        
-        cursor.close()
-        conn.close()
-        
-        return result
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+
+            query = """
+                SELECT 
+                    k.id, 
+                    k.name, 
+                    k.description, 
+                    k.create_date,
+                    k.update_date,
+                    k.doc_num
+                FROM knowledgebase k
+                WHERE k.id = :id
+            """
+            cursor.execute(query, {'id': kb_id})
+            result = cursor.fetchone()
+            formatted_km = []
+
+            if result:
+                # 处理空描述
+                if not result.get('DESCRIPTION'):
+                    result['DESCRIPTION'] = "暂无描述"
+                # 处理时间格式
+                # if result.get('CREATE_DATE'):
+                #     if isinstance(result['CREATE_DATE'], datetime):
+                #         result['CREATE_DATE'] = result['CREATE_DATE'].strftime('%Y-%m-%d %H:%M:%S')
+                #     elif isinstance(result['CREATE_DATE'], str):
+                #         try:
+                #             datetime.strptime(result['CREATE_DATE'], '%Y-%m-%d %H:%M:%S')
+                #         except ValueError:
+                #             result['CREATE_DATE'] = ""
+
+                formatted_km.append({
+                    "id": result["ID"],
+                    "name": result["NAME"],
+                    "description": result["DESCRIPTION"],
+                    "create_date": result["CREATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if result["CREATE_DATE"] else "",
+                    "update_date": result["UPDATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if result["UPDATE_DATE"] else "",
+                    "doc_num": result["DOC_NUM"]
+                })
+
+            cursor.close()
+            conn.close()
+
+            return formatted_km
+
+        except oracledb.DatabaseError as err:
+            logger.error("查询知识库列表错误: %s", err)
+            print(f"查询知识库列表错误: {err}")
+            return False
 
     @classmethod
     def _check_name_exists(cls, name):
@@ -179,32 +188,37 @@ class KnowledgebaseService:
             cursor = conn.cursor()
             
             # 获取最早的用户ID作为tenant_id和created_by
-            tenant_id = None
-            created_by = None
-            try:
-                query_earliest_user = """
-                SELECT id FROM users
-                WHERE create_time = (SELECT MIN(create_time) FROM users)
-                FETCH FIRST 1 ROWS ONLY
-                """
-                cursor.execute(query_earliest_user)
-                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
-                earliest_user = cursor.fetchone()
-                
-                if earliest_user:
-                    tenant_id = earliest_user['ID']
-                    created_by = earliest_user['ID']  # 使用最早用户ID作为created_by
-                    print(f"使用创建时间最早的用户ID作为tenant_id和created_by: {tenant_id}")
-                else:
-                    # 如果找不到用户，使用默认值
+            tenant_id = data.get("creator_id")
+            created_by = data.get("creator_id")
+
+            if not tenant_id:
+                # 如果没有提供 creator_id，则使用默认值
+                print("未提供 creator_id，尝试获取最早用户 ID")
+                try:
+                    query_earliest_user = """
+                    SELECT id FROM users
+                    WHERE create_time = (SELECT MIN(create_time) FROM users)
+                    FETCH FIRST 1 ROWS ONLY
+                    """
+                    cursor.execute(query_earliest_user)
+                    cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+                    earliest_user = cursor.fetchone()
+
+                    if earliest_user:
+                        tenant_id = earliest_user['ID']
+                        created_by = earliest_user['ID']  # 使用最早用户ID作为created_by
+                        print(f"使用创建时间最早的用户ID作为tenant_id和created_by: {tenant_id}")
+                    else:
+                        # 如果找不到用户，使用默认值
+                        tenant_id = "system"
+                        created_by = "system"
+                        print(f"未找到用户, 使用默认值作为tenant_id和created_by: {tenant_id}")
+                except Exception as e:
+                    print(f"获取用户ID失败: {str(e)}，使用默认值")
                     tenant_id = "system"
                     created_by = "system"
-                    print(f"未找到用户, 使用默认值作为tenant_id和created_by: {tenant_id}")
-            except Exception as e:
-                print(f"获取用户ID失败: {str(e)}，使用默认值")
-                tenant_id = "system"
-                created_by = "system"
-            
+            else:
+                print(f"使用传入的 creator_id 作为 tenant_id 和 created_by: {tenant_id}")
 
             # --- 获取动态 embd_id ---
             dynamic_embd_id = None
@@ -230,10 +244,10 @@ class KnowledgebaseService:
             except Exception as e:
                 dynamic_embd_id = default_embd_id
                 print(f"查询 embedding 模型失败: {str(e)}，使用默认值: {dynamic_embd_id}")
-                traceback.print_exc() # Log the full traceback for debugging
+                traceback.print_exc()  # Log the full traceback for debugging
 
             current_time = datetime.now()
-            create_date = current_time.strftime('%Y-%m-%d %H:%M:%S')
+            create_date = current_time.strftime("%Y-%m-%d %H:%M:%S")
             create_time = int(current_time.timestamp() * 1000)  # 毫秒级时间戳
             update_date = create_date
             update_time = create_time
@@ -281,10 +295,10 @@ class KnowledgebaseService:
                 None,                                       # avatar
                 tenant_id,                                  # tenant_id
                 data['name'],                               # name
-                data.get('language', 'Chinese'),            # language
-                data.get('description', ''),                # description
+                data['language'],            # language
+                data['description'],                # description
                 dynamic_embd_id,                            # embd_id
-                data.get('permission', 'me'),               # permission
+                data['permission'],               # permission
                 created_by,                                 # created_by - 使用内部获取的值
                 0,                                          # doc_num
                 0,                                          # token_num
@@ -351,7 +365,7 @@ class KnowledgebaseService:
             # 构建并执行更新语句
             query = f"""
                 UPDATE knowledgebase 
-                SET {', '.join(update_fields)}
+                SET {", ".join(update_fields)}
                 WHERE id = :id
             """
 
@@ -426,18 +440,26 @@ class KnowledgebaseService:
             raise Exception(f"批量删除知识库失败: {str(e)}")
 
     @classmethod
-    def get_knowledgebase_documents(cls, kb_id, page=1, size=10, name=''):
+    def get_knowledgebase_documents(cls, kb_id, page=1, size=10, name="", sort_by="create_time", sort_order="desc"):
         """获取知识库下的文档列表"""
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
             
             # 先检查知识库是否存在
             check_query = "SELECT id FROM knowledgebase WHERE id = :id"
             cursor.execute(check_query, {'id': kb_id})
             if not cursor.fetchone():
                 raise Exception("知识库不存在")
-            
+
+            # 验证排序字段
+            valid_sort_fields = ["name", "size", "create_time", "create_date"]
+            if sort_by not in valid_sort_fields:
+                sort_by = "create_time"
+
+            # 构建排序子句
+            sort_clause = f"ORDER BY d.{sort_by} {sort_order.upper()}"
+
             # 查询文档列表
             query = """
                 SELECT 
@@ -447,10 +469,7 @@ class KnowledgebaseService:
                     d.create_date,
                     d.status,
                     d.run,
-                    d.progress,
-                    d.parser_id,
-                    d.parser_config,
-                    d.meta_fields
+                    d.progress
                 FROM document d
                WHERE d.kb_id = :kb_id
             """
@@ -459,39 +478,54 @@ class KnowledgebaseService:
             if name:
                 query += " AND d.name LIKE :name"
                 params['name'] = f"%{name}%"
-                
-            query += " ORDER BY d.create_date DESC OFFSET :offset ROWS FETCH NEXT :size ROWS ONLY"
-            params['offset'] = (page-1)*size
-            params['size'] = size
-            
-            cursor.execute(query, params)
-            results = cursor.fetchall()
 
-            # 处理日期时间格式
-            for result in results:
-                if result[3]:  # create_date位置
-                    if isinstance(result[3], datetime):
-                        result = list(result)
-                        result[3] = result[3].strftime('%Y-%m-%d %H:%M:%S')
-                        result = tuple(result)
+            # 添加查询排序条件
+            query += f" {sort_clause}"
+
+            query += " OFFSET :offset ROWS FETCH NEXT :fetch_size ROWS ONLY"
+            params['offset'] = (page-1)*size
+            params['fetch_size'] = size
+
+            logger.info("get_knowledgebase_documents SQL: %s", query)
+            logger.info("get_knowledgebase_documents params: %s", params)
+
+            cursor.execute(query, params)
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+            results = cursor.fetchall()
+            low_results = [{k.lower(): v for k, v in item.items()} for item in results]
+
+            for result in low_results:
+                # 处理空描述
+                if result.get("create_date"):
+                    result["create_date"] = result["create_date"].strftime("%Y-%m-%d %H:%M:%S")
+
+            logger.info("执行结果 low_results: %s", low_results)
+
             # 获取总数
             count_query = "SELECT COUNT(*) as total FROM document WHERE kb_id = :kb_id"
             count_params = {'kb_id': kb_id}
             if name:
                 count_query += " AND name LIKE :name"
                 count_params['name'] = f"%{name}%"
-                
+
+            logger.info("get_knowledgebase_documents count_query: %s", count_query)
+            logger.info("get_knowledgebase_documents count_query: %s", count_params)
+
             cursor.execute(count_query, count_params)
-            total = cursor.fetchone()[0]
-            
+            result = cursor.fetchone()
+            if result:
+                total = result[0]
+            else:
+                total = 0  # 或根据业务逻辑处理
+
+            logger.info("get_knowledgebase_documents total: %s", total)
             cursor.close()
             conn.close()
             
             return {
-                'list': results,
+                'list': low_results,
                 'total': total
             }
-                
         except Exception as e:
             print(f"获取知识库文档列表失败: {str(e)}")
             raise Exception(f"获取知识库文档列表失败: {str(e)}")
@@ -505,7 +539,7 @@ class KnowledgebaseService:
             # 如果没有传入created_by，则获取最早的用户ID
             if created_by is None:
                 conn = get_db_connection()
-                cursor = conn.cursor(dictionary=True)
+                cursor = conn.cursor()
                 
                 # 查询创建时间最早的用户ID
                 query_earliest_user = """
@@ -514,6 +548,7 @@ class KnowledgebaseService:
                 FETCH FIRST 1 ROWS ONLY
                 """
                 cursor.execute(query_earliest_user)
+                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 earliest_user = cursor.fetchone()
                 
                 if earliest_user:
@@ -550,6 +585,7 @@ class KnowledgebaseService:
             
             try:
                 cursor.execute(file_query, file_params)
+                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 files = cursor.fetchall()
                 print(f"[DEBUG] 查询到的文件数据: {files}")
             except Exception as e:
@@ -583,6 +619,7 @@ class KnowledgebaseService:
                     WHERE d.kb_id = :kb_id AND f2d.file_id = :file_id
                 """
                 cursor.execute(check_query, {'kb_id': kb_id, 'file_id': file_id})
+                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 exists = cursor.fetchone()[0] > 0
                 
                 if exists:
@@ -657,6 +694,7 @@ class KnowledgebaseService:
                 }
 
                 cursor.execute(doc_query, doc_params)
+                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
 
                 # 创建文件到文档的映射
                 f2d_id = generate_uuid()
@@ -681,7 +719,7 @@ class KnowledgebaseService:
                 }
 
                 cursor.execute(f2d_query, f2d_params)
-                
+                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 added_count += 1
 
             # 更新知识库文档数量
@@ -772,7 +810,7 @@ class KnowledgebaseService:
         try:
             # 1. 获取文档和文件信息
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
 
             # 查询文档信息
             doc_query = """
@@ -787,18 +825,28 @@ class KnowledgebaseService:
                 raise Exception("文档不存在")
 
             # 获取关联的文件信息 (主要是 parent_id 作为 bucket_name)
-            f2d_query = "SELECT file_id FROM file2document WHERE document_id = %s"
+            f2d_query = "SELECT file_id FROM file2document WHERE document_id = :1"
             cursor.execute(f2d_query, (doc_id,))
             f2d_result = cursor.fetchone()
             if not f2d_result:
                 raise Exception("无法找到文件到文档的映射关系")
             file_id = f2d_result['file_id']
 
-            file_query = "SELECT parent_id FROM file WHERE id = %s"
+            file_query = "SELECT parent_id FROM file WHERE id = :1"
             cursor.execute(file_query, (file_id,))
             file_info = cursor.fetchone()
             if not file_info:
                 raise Exception("无法找到文件记录")
+
+            # 获取知识库创建人信息
+            # 根据doc_id查询document这张表，得到kb_id
+            kb_id_query = "SELECT kb_id FROM document WHERE id = :1"
+            cursor.execute(kb_id_query, (doc_id,))
+            kb_id = cursor.fetchone()
+            # 根据kb_id查询knowledgebase这张表，得到created_by
+            kb_query = "SELECT created_by FROM knowledgebase WHERE id = :1"
+            cursor.execute(kb_query, (kb_id["kb_id"],))
+            kb_info = cursor.fetchone()
 
             cursor.close()
             conn.close()
@@ -861,7 +909,7 @@ class KnowledgebaseService:
         cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor()
 
             query = """
                 SELECT progress, progress_msg, status, run
@@ -875,13 +923,18 @@ class KnowledgebaseService:
                 return {"error": "文档不存在"}
 
             # 确保 progress 是浮点数
-            progress_value = float(result[0]) if result[0] is not None else 0.0
+            progress_value = 0.0
+            if result.get("progress") is not None:
+                try:
+                    progress_value = float(result["progress"])
+                except (ValueError, TypeError):
+                    progress_value = 0.0  # 或记录错误
 
             return {
                 "progress": progress_value,
-                "message": result[1] if result[1] else "",
-                "status": result[2] if result[2] else "0",
-                "running": result[3] if result[3] else "0"
+                "message": result.get("progress_msg", ""),
+                "status": result.get("status", "0"),
+                "running": result.get("run", "0"),
             }
 
         except Exception as e:
@@ -909,10 +962,14 @@ class KnowledgebaseService:
             """
             cursor.execute(query)
             result = cursor.fetchone()
-            return result[0] if result else None
-        except oracledb.DatabaseError as e:
-            error, = e.args
-            print(f"查询最早用户时出错: [Code: {error.code}] {error.message}")
+            if result:
+                return result[0]  # 返回用户 ID
+            else:
+                print("警告: 数据库中没有用户！")
+                return None
+        except Exception as e:
+            print(f"查询最早用户时出错: {e}")
+            traceback.print_exc()
             return None
         finally:
             if cursor:
@@ -934,24 +991,27 @@ class KnowledgebaseService:
 
             payload = {"input": ["Test connection"], "model": model_name}
 
-            if not base_url.startswith(('http://', 'https://')):
-                 base_url = 'http://' + base_url
-            if not base_url.endswith('/'):
-                base_url += '/'
-            
+            if not base_url.startswith(("http://", "https://")):
+                base_url = "http://" + base_url
+            if not base_url.endswith("/"):
+                base_url += "/"
+
             # --- URL 拼接优化 ---
             endpoint_segment = "embeddings"
             full_endpoint_path = "v1/embeddings"
             # 移除末尾斜杠以方便判断
-            normalized_base_url = base_url.rstrip('/')
+            normalized_base_url = base_url.rstrip("/")
 
-            if normalized_base_url.endswith('/v1'):
+            if normalized_base_url.endswith("/v1"):
                 # 如果 base_url 已经是 http://host/v1 形式
-                current_test_url = normalized_base_url + '/' + endpoint_segment
+                current_test_url = normalized_base_url + "/" + endpoint_segment
+            elif normalized_base_url.endswith("/embeddings"):
+                # 如果 base_url 已经是 http://host/embeddings 形式(比如硅基流动API，无需再进行处理)
+                current_test_url = normalized_base_url
             else:
                 # 如果 base_url 是 http://host 或 http://host/api 形式
-                current_test_url = normalized_base_url + '/' + full_endpoint_path
-                
+                current_test_url = normalized_base_url + "/" + full_endpoint_path
+
             # --- 结束 URL 拼接优化 ---
             print(f"尝试请求 URL: {current_test_url}")
             try:
@@ -960,16 +1020,17 @@ class KnowledgebaseService:
 
                 if response.status_code == 200:
                     res_json = response.json()
-                    if ("data" in res_json and isinstance(res_json["data"], list) and len(res_json["data"]) > 0 and "embedding" in res_json["data"][0] and len(res_json["data"][0]["embedding"]) > 0) or \
-                        (isinstance(res_json, list) and len(res_json) > 0 and isinstance(res_json[0], list) and len(res_json[0]) > 0):
+                    if (
+                        "data" in res_json and isinstance(res_json["data"], list) and len(res_json["data"]) > 0 and "embedding" in res_json["data"][0] and len(res_json["data"][0]["embedding"]) > 0
+                    ) or (isinstance(res_json, list) and len(res_json) > 0 and isinstance(res_json[0], list) and len(res_json[0]) > 0):
                         print(f"连接测试成功: {current_test_url}")
                         return True, "连接成功"
                     else:
                         print(f"连接成功但响应格式不正确于 {current_test_url}")
-                        
+
             except Exception as json_e:
                 print(f"解析 JSON 响应失败于 {current_test_url}: {json_e}")
-                     
+
             return False, "连接失败: 响应错误"
 
         except Exception as e:
@@ -1006,7 +1067,7 @@ class KnowledgebaseService:
 
             earliest_user_id = earliest_user[0]
 
-            # 2. 查询embedding配置
+            # 2. 根据最早用户ID查询 tenant_llm 表中 model_type 为 embedding 的配置
             query_embedding_config = """
                     SELECT llm_name, api_key, api_base
                     FROM tenant_llm
@@ -1014,25 +1075,38 @@ class KnowledgebaseService:
                     ORDER BY create_time DESC
                     FETCH FIRST 1 ROWS ONLY
                 """
-            cursor.execute(query_embedding_config, {'tenant_id': earliest_user[0]})
+            cursor.execute(query_embedding_config, {'tenant_id': earliest_user_id} )
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
             config = cursor.fetchone()
+            # 日志记录（明确参数名和值）
+            logger.info("query_embedding_config config: %s", config)
 
             if config:
-                llm_name = config[0].split('___')[0] if config[0] else ""
-                return {
-                    "llm_name": llm_name,
-                    "api_key": config[1] if config[1] else "",
-                    "api_base": config[2] if config[2] else ""
-                }
-            return {
-                "llm_name": "",
-                "api_key": "",
-                "api_base": ""
-            }
-        except oracledb.DatabaseError as e:
-            error, = e.args
-            print(f"获取系统Embedding配置时出错: [Code: {error.code}] {error.message}")
-            raise Exception(f"获取配置时数据库出错: {error.message}")
+                llm_name = config.get("LLM_NAME", "")
+                api_key = config.get("API_KEY", "")
+                api_base = config.get("API_BASE", "")
+                # 对模型名称进行处理 (可选，根据需要保留或移除)
+                if llm_name and "___" in llm_name:
+                    llm_name = llm_name.split("___")[0]
+
+                # (对硅基流动平台进行特异性处理)
+                if llm_name == "netease-youdao/bce-embedding-base_v1":
+                    llm_name = "BAAI/bge-m3"
+
+                # 如果 API 基础地址为空字符串，设置为硅基流动嵌入模型的 API 地址
+                if api_base == "":
+                    api_base = "https://api.siliconflow.cn/v1/embeddings"
+
+                # 如果有配置，返回
+                return {"llm_name": llm_name, "api_key": api_key, "api_base": api_base}
+            else:
+                # 如果最早的用户没有 embedding 配置，返回空
+                return {"llm_name": "", "api_key": "", "api_base": ""}
+        except Exception as e:
+            print(f"获取系统 Embedding 配置时出错: {e}")
+            traceback.print_exc()
+            # 保持原有的异常处理逻辑，向上抛出，让调用者处理
+            raise Exception(f"获取配置时数据库出错: {e}")
         finally:
             if cursor:
                 cursor.close()
@@ -1047,79 +1121,25 @@ class KnowledgebaseService:
         if not tenant_id:
             raise Exception("无法找到系统基础用户")
 
+        print(f"开始设置系统 Embedding 配置: {llm_name}, {api_base}, {api_key}")
         # 执行连接测试
-        is_connected, message = cls._test_embedding_connection(
-            base_url=api_base,
-            model_name=llm_name,
-            api_key=api_key
-        )
+        is_connected, message = cls._test_embedding_connection(base_url=api_base, model_name=llm_name, api_key=api_key)
 
         if not is_connected:
             # 返回具体的测试失败原因给调用者（路由层）处理
             return False, f"连接测试失败: {message}"
 
         return True, f"连接成功: {message}"
-        # 测试通过，保存或更新配置到数据库(先不保存，以防冲突)
-        # conn = None
-        # cursor = None
-        # try:
-        #     conn = get_db_connection()
-        #     cursor = conn.cursor()
-
-        #     # 检查 TenantLLM 记录是否存在
-        #     check_query = """
-        #         SELECT id FROM tenant_llm
-        #         WHERE tenant_id = %s AND llm_name = %s
-        #     """
-        #     cursor.execute(check_query, (tenant_id, llm_name))
-        #     existing_config = cursor.fetchone()
-
-        #     now = datetime.now()
-        #     if existing_config:
-        #         # 更新记录
-        #         update_sql = """
-        #             UPDATE tenant_llm
-        #             SET api_key = %s, api_base = %s, max_tokens = %s, update_time = %s, update_date = %s
-        #             WHERE id = %s
-        #         """
-        #         update_params = (api_key, api_base, max_tokens, now, now.date(), existing_config[0])
-        #         cursor.execute(update_sql, update_params)
-        #         print(f"已更新 TenantLLM 记录 (ID: {existing_config[0]})")
-        #     else:
-        #         # 插入新记录
-        #         insert_sql = """
-        #             INSERT INTO tenant_llm (tenant_id, llm_factory, model_type, llm_name, api_key, api_base, max_tokens, create_time, create_date, update_time, update_date, used_tokens)
-        #             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        #         """
-        #         insert_params = (tenant_id, "VLLM", "embedding", llm_name, api_key, api_base, max_tokens, now, now.date(), now, now.date(), 0) # used_tokens 默认为 0
-        #         cursor.execute(insert_sql, insert_params)
-        #         print(f"已创建新的 TenantLLM 记录")
-
-        #     conn.commit() # 提交事务
-        #     return True, "配置已成功保存"
-
-        # except Exception as e:
-        #     if conn:
-        #         conn.rollback() # 出错时回滚
-        #     print(f"保存系统 Embedding 配置时数据库出错: {e}")
-        #     traceback.print_exc()
-        #     # 返回 False 和错误信息给路由层
-        #     return False, f"保存配置时数据库出错: {e}"
-        # finally:
-            # if cursor:
-            #     cursor.close()
-            # if conn and conn.is_connected():
-            #     conn.close()
 
     # 顺序批量解析 (核心逻辑，在后台线程运行)
     @classmethod
     def _run_sequential_batch_parse(cls, kb_id):
-        """【内部方法】顺序执行批量解析，并在 SEQUENTIAL_BATCH_TASKS 中更新状态"""
+        """顺序执行批量解析，并在 SEQUENTIAL_BATCH_TASKS 中更新状态"""
         global SEQUENTIAL_BATCH_TASKS
         task_info = SEQUENTIAL_BATCH_TASKS.get(kb_id)
         if not task_info:
             print(f"[Seq Batch ERROR] Task info for KB {kb_id} not found at start.")
-            return # 理论上不应发生
+            return  # 理论上不应发生
 
         conn = None
         cursor = None
@@ -1161,8 +1181,8 @@ class KnowledgebaseService:
 
             # 按顺序解析每个文档
             for i, doc in enumerate(documents_to_parse):
-                doc_id = doc['id']
-                doc_name = doc['name']
+                doc_id = doc['ID']
+                doc_name = doc['NAME']
 
                 # 更新当前进度
                 task_info["current"] = i + 1
@@ -1188,9 +1208,9 @@ class KnowledgebaseService:
                     traceback.print_exc()
                     # 尝试更新文档状态为失败，以防 parse_document 内部未处理
                     try:
-                        _update_document_progress(doc_id, status='1', run='0', progress=0.0, message=f"批量任务中解析失败: {str(e)[:255]}")
+                        _update_document_progress(doc_id, status="1", run="0", progress=0.0, message=f"批量任务中解析失败: {str(e)[:255]}")
                     except Exception as update_err:
-                         print(f"[Service-ERROR] 更新文档 {doc_id} 失败状态时出错: {str(update_err)}")
+                        print(f"[Service-ERROR] 更新文档 {doc_id} 失败状态时出错: {str(update_err)}")
 
             # 任务完成
             end_time = time.time()
@@ -1198,7 +1218,7 @@ class KnowledgebaseService:
             final_message = f"批量顺序解析完成。总计 {total_count} 个，成功 {parsed_count} 个，失败 {failed_count} 个。耗时 {duration} 秒。"
             task_info["status"] = "completed"
             task_info["message"] = final_message
-            task_info["current"] = total_count # 确保 current 等于 total
+            task_info["current"] = total_count
             SEQUENTIAL_BATCH_TASKS[kb_id] = task_info
             print(f"[Seq Batch] KB {kb_id}: {final_message}")
 

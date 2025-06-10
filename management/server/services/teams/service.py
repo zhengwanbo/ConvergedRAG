@@ -3,15 +3,13 @@ from datetime import datetime
 from management.server.utils import generate_uuid
 from management.server.database import get_db_connection
 import logging
-
 # 配置日志（通常在应用启动时设置）
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
-
-def get_teams_with_pagination(current_page, page_size, name=''):
+def get_teams_with_pagination(current_page, page_size, name='', sort_by="create_time",sort_order="desc"):
     """查询团队信息，支持分页和条件筛选"""
     try:
         conn = get_db_connection()
@@ -26,10 +24,20 @@ def get_teams_with_pagination(current_page, page_size, name=''):
             params.append(f"%{name}%")
         
         # 组合WHERE子句
-        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
-        
+        where_sql = "WHERE " + (" AND ".join(where_clauses) if where_clauses else "1=1")
+
+        # 验证排序字段
+        valid_sort_fields = ["name", "create_time", "create_date"]
+        if sort_by not in valid_sort_fields:
+            sort_by = "create_time"
+
+        # 构建排序子句
+        sort_clause = f"ORDER BY {sort_by} {sort_order.upper()}"
+
         # 查询总记录数
-        count_sql = f"SELECT COUNT(*) as total FROM tenant t WHERE {where_sql}"
+        count_sql = f"SELECT COUNT(*) as total FROM tenant t {where_sql}"
+        logger.info("total: %s", count_sql)
+
         cursor.execute(count_sql, params)
         result = cursor.fetchone()
         total = result[0]
@@ -51,10 +59,8 @@ def get_teams_with_pagination(current_page, page_size, name=''):
             (SELECT COUNT(*) FROM user_tenant ut WHERE ut.tenant_id = t.id AND ut.status = 1) as member_count
         FROM 
             tenant t
-        WHERE 
-            {where_sql}
-        ORDER BY 
-            t.create_date DESC
+        {where_sql}
+        {sort_clause}
         OFFSET :1 ROWS FETCH FIRST :2 ROWS ONLY
         """
         logger.info("执行SQL: %s", query)
@@ -103,20 +109,23 @@ def get_team_by_id(team_id):
         """
         cursor.execute(query, (team_id,))
         cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
-        team = cursor.fetchone()
-        
+        results = cursor.fetchone()
+
+        team = [{k.lower(): v for k, v in item.items()} for item in results]
+
         cursor.close()
         conn.close()
         
         if team:
-            return {
-                "id": team["ID"],
-                "name": team["NAME"],
-                "createTime": team["CREATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if team["CREATE_DATE"] else "",
-                "updateTime": team["UPDATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if team["UPDATE_DATE"] else "",
-                "status": team["STATUS"],
-                "credit": team["CREDIT"]
-            }
+            return team
+            # return {
+            #     "id": team["ID"],
+            #     "name": team["NAME"],
+            #     "create_date": team["CREATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if team["CREATE_DATE"] else "",
+            #     "update_date": team["UPDATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if team["UPDATE_DATE"] else "",
+            #     "status": team["STATUS"],
+            #     "credit": team["CREDIT"]
+            # }
         return None
         
     except oracledb.DatabaseError as err:

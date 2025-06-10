@@ -60,7 +60,7 @@ class File(BaseModel):
     source_type = CharField(default="", index=True)
     
     class Meta:
-        db_table = "file"
+        db_table = "files"
 
 class File2Document(BaseModel):
     id = CharField(primary_key=True)

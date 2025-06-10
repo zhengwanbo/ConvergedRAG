@@ -1,5 +1,5 @@
 {
-        "id": {"type": "varchar2(50)", "default": ""},
+        "id": {"type": "varchar2(60)", "default": ""},
         "doc_id": {"type": "varchar2(60)", "default": ""},
         "kb_id": {"type": "varchar2(60)", "default": ""},
         "create_time": {"type": "varchar2(40)", "default": ""},

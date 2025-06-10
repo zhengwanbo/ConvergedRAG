@@ -1,5 +1,5 @@
 import oracledb
-import time
+import pytz
 from datetime import datetime
 from management.server.utils import generate_uuid, encrypt_password
 from management.server.database import get_db_connection
@@ -12,7 +12,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def get_users_with_pagination(current_page, page_size, username='', email=''):
+def get_users_with_pagination(current_page, page_size, username='', email='', sort_by="create_time",sort_order="desc"):
     """查询用户信息，支持分页和条件筛选"""
     try:
         # 建立数据库连接
@@ -34,10 +34,18 @@ def get_users_with_pagination(current_page, page_size, username='', email=''):
             params.append(f"%{email}%")
         
         # 组合WHERE子句
-        where_sql = " AND ".join(where_clauses) if where_clauses else "1=1"
+        where_sql = "WHERE " + (" AND ".join(where_clauses) if where_clauses else "1=1")
+
+        # 验证排序字段
+        valid_sort_fields = ["name", "email", "create_time", "create_date"]
+        if sort_by not in valid_sort_fields:
+            sort_by = "create_time"
+
+        # 构建排序子句
+        sort_clause = f"ORDER BY {sort_by} {sort_order.upper()}"
         
         # 查询总记录数
-        count_sql = f"SELECT COUNT(*) as total FROM users WHERE {where_sql}"
+        count_sql = f"SELECT COUNT(*) as total FROM users {where_sql}"
         logger.info("执行SQL: %s", count_sql)
         logger.info("SQL参数: %s", params)
 
@@ -53,8 +61,8 @@ def get_users_with_pagination(current_page, page_size, username='', email=''):
         query = f"""
         SELECT id, nickname, email, create_date, update_date, status, is_superuser
         FROM users
-        WHERE {where_sql}
-        ORDER BY id DESC
+        {where_sql}
+        {sort_clause}
         OFFSET :1 ROWS FETCH FIRST :2 ROWS ONLY
         """
         logger.info("执行分页查询SQL: %s", query)
@@ -63,7 +71,8 @@ def get_users_with_pagination(current_page, page_size, username='', email=''):
         cursor.execute(query, params + [offset, page_size])
         cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
         results = cursor.fetchall()
-        logger.info("执行结果: %s", results)
+        # logger.info("执行结果: %s", results)
+
         # 关闭连接
         cursor.close()
         conn.close()
@@ -119,7 +128,10 @@ def delete_user(user_id):
         return False
 
 def create_user(user_data):
-    """创建新用户，并加入最早用户的团队，并使用相同的模型配置"""
+    """
+    创建新用户，并加入最早用户的团队，并使用相同的模型配置。
+    时间将以 UTC+8 (Asia/Shanghai) 存储。
+    """
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -367,8 +379,19 @@ def reset_user_password(user_id, new_password):
 
         # 加密新密码
         encrypted_password = encrypt_password(new_password) # 使用与创建用户时相同的加密方法
-        update_time = int(datetime.now().timestamp() * 1000)
-        update_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        # --- 修改时间获取和格式化逻辑 ---
+        # 获取当前 UTC 时间
+        utc_now = datetime.utcnow().replace(tzinfo=pytz.utc)
+        # 定义目标时区 (UTC+8)
+        target_tz = pytz.timezone('Asia/Shanghai')
+        # 将 UTC 时间转换为目标时区时间
+        local_dt = utc_now.astimezone(target_tz)
+
+        # 使用转换后的时间
+        update_time = int(local_dt.timestamp() * 1000) # 使用本地化时间戳
+        update_date = local_dt.strftime("%Y-%m-%d %H:%M:%S") # 使用本地化时间格式化
+        # --- 时间逻辑修改结束 ---
 
         # 更新用户密码
         update_query = """

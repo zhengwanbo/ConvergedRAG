@@ -10,9 +10,11 @@ def get_teams():
         current_page = int(request.args.get('currentPage', 1))
         page_size = int(request.args.get('size', 10))
         team_name = request.args.get('name', '')
-        
+        sort_by = request.args.get("sort_by", "create_time")
+        sort_order = request.args.get("sort_order", "desc")
+
         # 调用服务函数获取分页和筛选后的团队数据
-        teams, total = get_teams_with_pagination(current_page, page_size, team_name)
+        teams, total = get_teams_with_pagination(current_page, page_size, team_name, sort_by, sort_order)
         
         # 返回符合前端期望格式的数据
         return jsonify({

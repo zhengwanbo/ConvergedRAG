@@ -1,17 +1,12 @@
 import os
-import oracledb
+import shutil
 import re
 import tempfile
-from io import BytesIO
-from minio import Minio
 from dotenv import load_dotenv
-from werkzeug.utils import secure_filename
 from datetime import datetime 
-from .utils import FileType, FileSource, StatusEnum, get_uuid
-from .document_service import DocumentService
-from .file_service import FileService 
-from .file2document_service import File2DocumentService
-from management.server.database import get_db_connection, get_minio_client
+from management.server.services.files.utils import FileType, FileSource, StatusEnum, get_uuid
+from pathlib import Path
+from management.server.database import get_db_connection, get_minio_client, get_redis_connection
 import logging
 
 # 配置日志（通常在应用启动时设置）
@@ -23,51 +18,59 @@ logger = logging.getLogger(__name__)
 # 加载环境变量
 load_dotenv("../../docker/.env")
 
-temp_dir = tempfile.gettempdir() 
+# redis配置参数
+UPLOAD_TEMP_DIR = os.getenv("UPLOAD_TEMP_DIR", tempfile.gettempdir())
+CHUNK_EXPIRY_SECONDS = 3600 * 24  # 分块24小时过期
+
+temp_dir = tempfile.gettempdir()
 UPLOAD_FOLDER = os.path.join(temp_dir, "uploads")
-ALLOWED_EXTENSIONS = {'pdf', 'doc', 'docx', 'ppt', 'pptx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'txt', 'md'}
+ALLOWED_EXTENSIONS = {"pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx", "jpg", "jpeg", "png", "bmp", "txt", "md", "html"}
+
 
 def allowed_file(filename):
     """Check if the file extension is allowed"""
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 def filename_type(filename):
     """根据文件名确定文件类型"""
     ext = os.path.splitext(filename)[1].lower()
-    
-    if ext in ['.jpg', '.jpeg', '.png', '.gif', '.bmp']:
+
+    if ext in [".jpg", ".jpeg", ".png", ".gif", ".bmp"]:
         return FileType.VISUAL.value
-    elif ext in ['.pdf']:
+    elif ext in [".pdf"]:
         return FileType.PDF.value
-    elif ext in ['.doc', '.docx']:
+    elif ext in [".doc", ".docx"]:
         return FileType.WORD.value
-    elif ext in ['.xls', '.xlsx']:
+    elif ext in [".xls", ".xlsx"]:
         return FileType.EXCEL.value
-    elif ext in ['.ppt', '.pptx']:
+    elif ext in [".ppt", ".pptx"]:
         return FileType.PPT.value
-    elif ext in ['.txt', '.md']:
+    elif ext in [".txt", ".md"]:
         return FileType.TEXT.value
-    
+    elif ext in [".html"]:
+        return FileType.HTML.value
+
     return FileType.OTHER.value
 
-def get_files_list(current_page, page_size, parent_id=None, name_filter=""):
+
+def get_files_list(current_page, page_size, name_filter="", sort_by="create_time", sort_order="desc"):
     """
     获取文件列表
-    
+
     Args:
         current_page: 当前页码
         page_size: 每页大小
         parent_id: 父文件夹ID
         name_filter: 文件名过滤条件
-        
+
     Returns:
         tuple: (文件列表, 总数)
     """
     try:
         # 计算偏移量
         offset = (current_page - 1) * page_size
-        
+
         # 连接数据库
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -75,15 +78,19 @@ def get_files_list(current_page, page_size, parent_id=None, name_filter=""):
         # 构建查询条件
         where_clause = "WHERE f.type != 'folder'"  # 排除文件夹类型
         params = []
-        
-        if parent_id:
-            where_clause += " AND f.parent_id = :1"
-            params.append(parent_id)
-        
+
         if name_filter:
             where_clause += " AND f.name LIKE :2"
             params.append(f"%{name_filter}%")
-        
+
+        # 验证排序字段
+        valid_sort_fields = ["name", "size", "type", "create_time", "create_date"]
+        if sort_by not in valid_sort_fields:
+            sort_by = "create_time"
+
+        # 构建排序子句
+        sort_clause = f"ORDER BY f.{sort_by} {sort_order.upper()}"
+
         # 查询总数
         count_query = f"""
             SELECT COUNT(*) as total
@@ -352,7 +359,7 @@ def batch_delete_files(file_ids):
                 cursor.execute("""
                     SELECT id, parent_id, name, location, type
                     FROM files
-                    WHERE id = %s
+                    WHERE id = :1
                 """, (file_id,))
                 
                 file = cursor.fetchone()
@@ -368,20 +375,20 @@ def batch_delete_files(file_ids):
                     SELECT f2d.id as f2d_id, f2d.document_id, d.kb_id, d.location
                     FROM file2document f2d
                     JOIN document d ON f2d.document_id = d.id
-                    WHERE f2d.file_id = %s
+                    WHERE f2d.file_id = :1
                 """, (file_id,))
                 
                 document_mappings = cursor.fetchall()
                 
                 # 1. 先删除file表中的记录
-                cursor.execute("DELETE FROM files WHERE id = %s", (file_id,))
+                cursor.execute("DELETE FROM files WHERE id = :1", (file_id,))
                 
                 # 2. 删除关联的file2document记录
-                cursor.execute("DELETE FROM file2document WHERE file_id = %s", (file_id,))
+                cursor.execute("DELETE FROM file2document WHERE file_id = :1", (file_id,))
                 
                 # 3. 删除关联的document记录
                 for doc_mapping in document_mappings:
-                    cursor.execute("DELETE FROM document WHERE id = %s", (doc_mapping['document_id'],))
+                    cursor.execute("DELETE FROM document WHERE id = :1", (doc_mapping['document_id'],))
                 
                 success_count += 1
             
@@ -395,7 +402,7 @@ def batch_delete_files(file_ids):
                     cursor.execute("""
                         SELECT id, parent_id, name, location, type
                         FROM files
-                        WHERE id = %s
+                        WHERE id = :1
                     """, (file_id,))
                     
                     file = cursor.fetchone()
@@ -410,7 +417,7 @@ def batch_delete_files(file_ids):
                             SELECT f2d.id as f2d_id, f2d.document_id, d.kb_id, d.location
                             FROM file2document f2d
                             JOIN document d ON f2d.document_id = d.id
-                            WHERE f2d.file_id = %s
+                            WHERE f2d.file_id = :1  
                         """, (file_id,))
                         
                         document_mappings = cursor.fetchall()
@@ -629,9 +636,137 @@ def upload_files_to_server(files, parent_id=None, user_id=None):
                 # 删除临时文件
                 if os.path.exists(filepath):
                     os.remove(filepath)
-    
-    return {
-        'code': 0,
-        'data': results,
-        'message': f'成功上传 {len([r for r in results if r["status"] == "success"])}/{len(files)} 个文件'
-    }
+        else:
+            raise RuntimeError({"name": filename, "error": "不支持的文件类型", "status": "failed"})
+
+    return {"code": 0, "data": results, "message": f"成功上传 {len([r for r in results if r['status'] == 'success'])}/{len(files)} 个文件"}
+
+
+def handle_chunk_upload(chunk_file, chunk_index, total_chunks, upload_id, file_name, parent_id=None):
+    """
+    处理分块上传
+
+    Args:
+        chunk_file: 上传的文件分块
+        chunk_index: 分块索引
+        total_chunks: 总分块数
+        upload_id: 上传ID
+        file_name: 文件名
+        parent_id: 父目录ID
+
+    Returns:
+        dict: 上传结果
+    """
+    try:
+        # 创建临时目录存储分块
+        upload_dir = Path(UPLOAD_TEMP_DIR) / "chunks" / upload_id
+        upload_dir.mkdir(parents=True, exist_ok=True)
+
+        # 保存分块
+        chunk_path = upload_dir / f"{chunk_index}.chunk"
+        chunk_file.save(str(chunk_path))
+
+        # 使用Redis记录上传状态
+        r = get_redis_connection()
+
+        # 记录文件信息
+        if int(chunk_index) == 0:
+            r.hmset(f"upload:{upload_id}:info", {"file_name": file_name, "total_chunks": total_chunks, "parent_id": parent_id or "", "status": "uploading"})
+            r.expire(f"upload:{upload_id}:info", CHUNK_EXPIRY_SECONDS)
+
+        # 记录分块状态
+        r.setbit(f"upload:{upload_id}:chunks", int(chunk_index), 1)
+        r.expire(f"upload:{upload_id}:chunks", CHUNK_EXPIRY_SECONDS)
+
+        # 检查是否所有分块都已上传
+        is_complete = True
+        for i in range(int(total_chunks)):
+            if not r.getbit(f"upload:{upload_id}:chunks", i):
+                is_complete = False
+                break
+
+        return {"code": 0, "data": {"upload_id": upload_id, "chunk_index": chunk_index, "is_complete": is_complete}, "message": "分块上传成功"}
+    except Exception as e:
+        print(f"分块上传失败: {str(e)}")
+        return {"code": 500, "message": f"分块上传失败: {str(e)}"}
+
+
+def merge_chunks(upload_id, file_name, total_chunks, parent_id=None):
+    """
+    合并文件分块
+
+    Args:
+        upload_id: 上传ID
+        file_name: 文件名
+        total_chunks: 总分块数
+        parent_id: 父目录ID
+
+    Returns:
+        dict: 合并结果
+    """
+    try:
+        r = get_redis_connection()
+
+        # 检查上传状态
+        if not r.exists(f"upload:{upload_id}:info"):
+            return {"code": 404, "message": "上传任务不存在或已过期"}
+
+        # 检查所有分块是否都已上传
+        for i in range(int(total_chunks)):
+            if not r.getbit(f"upload:{upload_id}:chunks", i):
+                return {"code": 400, "message": f"分块 {i} 未上传，无法合并"}
+
+        # 获取上传信息
+        upload_info = r.hgetall(f"upload:{upload_id}:info")
+        if not upload_info:
+            return {"code": 404, "message": "上传信息不存在"}
+
+        # 将字节字符串转换为普通字符串
+        upload_info = {k.decode("utf-8"): v.decode("utf-8") for k, v in upload_info.items()}
+
+        # 使用存储的信息，如果参数中没有提供
+        file_name = file_name or upload_info.get("file_name")
+
+        # 创建临时文件用于合并
+        upload_dir = Path(UPLOAD_TEMP_DIR) / "chunks" / upload_id
+        merged_path = Path(UPLOAD_TEMP_DIR) / f"merged_{upload_id}_{file_name}"
+
+        # 合并文件
+        with open(merged_path, "wb") as merged_file:
+            for i in range(int(total_chunks)):
+                chunk_path = upload_dir / f"{i}.chunk"
+                with open(chunk_path, "rb") as chunk_file:
+                    merged_file.write(chunk_file.read())
+
+        # 使用上传函数处理合并后的文件
+        with open(merged_path, "rb") as file_obj:
+            # 创建FileStorage对象
+            class MockFileStorage:
+                def __init__(self, file_obj, filename):
+                    self.file = file_obj
+                    self.filename = filename
+
+                def save(self, dst):
+                    with open(dst, "wb") as f:
+                        f.write(self.file.read())
+                        self.file.seek(0)  # 重置文件指针
+
+            mock_file = MockFileStorage(file_obj, file_name)
+            result = upload_files_to_server([mock_file])
+
+        # 更新状态为已完成
+        r.hset(f"upload:{upload_id}:info", "status", "completed")
+
+        # 清理临时文件
+        try:
+            if os.path.exists(merged_path):
+                os.remove(merged_path)
+            if upload_dir.exists():
+                shutil.rmtree(upload_dir)
+        except Exception as e:
+            print(f"清理临时文件失败: {str(e)}")
+
+        return result
+    except Exception as e:
+        print(f"合并分块失败: {str(e)}")
+        return {"code": 500, "message": f"合并分块失败: {str(e)}"}

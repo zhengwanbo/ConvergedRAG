@@ -18,13 +18,16 @@ import {
   getSystemEmbeddingConfigApi,
   setSystemEmbeddingConfigApi
 } from "@@/apis/kbs/knowledgebase"
+import { getTableDataApi } from "@@/apis/tables"
 import { usePagination } from "@@/composables/usePagination"
-import { CaretRight, Delete, Loading, Plus, Refresh, Search, Setting, View } from "@element-plus/icons-vue"
+import { CaretRight, Delete, Edit, Loading, Plus, Refresh, Search, Setting, View } from "@element-plus/icons-vue"
+
 import axios from "axios"
 import { ElMessage, ElMessageBox } from "element-plus"
 import { nextTick, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref, watch } from "vue"
 import "element-plus/dist/index.css"
 import "element-plus/theme-chalk/el-message-box.css"
+
 import "element-plus/theme-chalk/el-message.css"
 
 defineOptions({
@@ -88,7 +91,8 @@ const knowledgeBaseForm = reactive({
   name: "",
   description: "",
   language: "Chinese",
-  permission: "me"
+  permission: "me",
+  creator_id: ""
 })
 
 // 定义API返回数据的接口
@@ -116,6 +120,9 @@ const knowledgeBaseFormRules = {
   ],
   description: [
     { max: 200, message: "描述不能超过200个字符", trigger: "blur" }
+  ],
+  creator_id: [
+    { required: true, message: "请选择创建人", trigger: "change" }
   ]
 }
 
@@ -128,6 +135,61 @@ const searchData = reactive({
   name: ""
 })
 
+// 排序状态
+const sortData = reactive({
+  sortBy: "create_date",
+  sortOrder: "desc" // 默认排序顺序
+})
+
+// 文档列表排序状态
+const docSortData = reactive({
+  sortBy: "create_date",
+  sortOrder: "desc" // 默认排序顺序
+})
+
+// 文件列表排序状态
+const fileSortData = reactive({
+  sortBy: "create_date",
+  sortOrder: "desc" // 默认排序顺序
+})
+
+const editDialogVisible = ref(false)
+const editForm = reactive({
+  id: "",
+  name: "",
+  permission: "me"
+})
+const editLoading = ref(false)
+
+// 处理修改知识库
+function handleEdit(row: KnowledgeBaseData) {
+  editDialogVisible.value = true
+  editForm.id = row.id
+  editForm.name = row.name
+  editForm.permission = row.permission
+}
+
+// 提交修改
+function submitEdit() {
+  editLoading.value = true
+  // 调用修改知识库API
+  axios.put(`/api/v1/knowledgebases/${editForm.id}`, {
+    permission: editForm.permission
+  })
+    .then(() => {
+      ElMessage.success("知识库权限修改成功")
+      editDialogVisible.value = false
+      // 刷新知识库列表
+      getTableData()
+    })
+    .catch((error) => {
+      ElMessage.error(`修改知识库权限失败: ${error?.message || "未知错误"}`)
+    })
+    .finally(() => {
+      editLoading.value = false
+    })
+}
+
 // 存储多选的表格数据
 const multipleSelection = ref<KnowledgeBaseData[]>([])
 
@@ -138,7 +200,9 @@ function getTableData() {
   getKnowledgeBaseListApi({
     currentPage: paginationData.currentPage,
     size: paginationData.pageSize,
-    name: searchData.name
+    name: searchData.name,
+    sort_by: sortData.sortBy,
+    sort_order: sortData.sortOrder
   }).then((response) => {
     const result = response as ApiResponse<ListResponse>
     paginationData.total = result.data.total
@@ -166,6 +230,31 @@ function resetSearch() {
 // 打开新建知识库对话框
 function handleCreate() {
   createDialogVisible.value = true
+  getUserList() // 获取用户列表
+}
+
+// 获取用户列表
+function getUserList() {
+  userLoading.value = true
+  // 复用用户管理页面的API
+  getTableDataApi({
+    currentPage: 1,
+    size: 1000, // 获取足够多的用户
+    username: "",
+    email: "",
+    sort_by: "create_date",
+    sort_order: "desc"
+  }).then(({ data }) => {
+    userList.value = data.list.map((user: any) => ({
+      id: user.id,
+      username: user.username
+    }))
+  }).catch(() => {
+    userList.value = []
+    ElMessage.error("获取用户列表失败")
+  }).finally(() => {
+    userLoading.value = false
+  })
 }
 
 // 提交新建知识库
@@ -245,7 +334,9 @@ function getDocumentList() {
     kb_id: currentKnowledgeBase.value.id,
     currentPage: docPaginationData.currentPage,
     size: docPaginationData.pageSize,
-    name: ""
+    name: "",
+    sort_by: docSortData.sortBy,
+    sort_order: docSortData.sortOrder
   }).then((response) => {
     const result = response as ApiResponse<ListResponse>
     documentList.value = result.data.list
@@ -256,6 +347,25 @@ function getDocumentList() {
   }).finally(() => {
     documentLoading.value = false
   })
+}
+
+/**
+ * @description 处理文档表格排序变化事件
+ * @param {object} sortInfo 排序信息对象，包含 prop 和 order
+ * @param {string} sortInfo.prop 排序的字段名
+ * @param {string | null} sortInfo.order 排序的顺序 ('ascending', 'descending', null)
+ */
+function handleDocSortChange({ prop }: { prop: string, order: string | null }) {
+  // 如果点击的是同一个字段，则切换排序顺序
+  if (docSortData.sortBy === prop) {
+    // 当前为正序则切换为倒序，否则切换为正序
+    docSortData.sortOrder = docSortData.sortOrder === "asc" ? "desc" : "asc"
+  } else {
+    // 切换字段时，默认正序
+    docSortData.sortBy = prop
+    docSortData.sortOrder = "asc"
+  }
+  getDocumentList()
 }
 
 // 修改handleView方法
@@ -455,7 +565,7 @@ async function fetchBatchProgress() {
 function handleParseComplete() {
   ElMessage.success("文档解析完成")
   getDocumentList() // 刷新文档列表
-  getTableData() // 刷新知识库列表（因为文档数量可能变化）
+  getTableData() // 刷新知识库列表
 }
 
 function handleParseFailed(error: string) {
@@ -480,7 +590,7 @@ function handleRemoveDocument(row: any) {
         ElMessage.success("文档已从知识库移除")
         // 刷新文档列表
         getDocumentList()
-        // 刷新知识库列表（因为文档数量会变化）
+        // 刷新知识库列表
         getTableData()
       })
       .catch((error) => {
@@ -520,7 +630,9 @@ function getFileList() {
   getFileListApi({
     currentPage: filePaginationData.currentPage,
     size: filePaginationData.pageSize,
-    name: ""
+    name: "",
+    sort_by: fileSortData.sortBy,
+    sort_order: fileSortData.sortOrder
   }).then((response) => {
     const typedResponse = response as ApiResponse<FileListResponse>
     fileList.value = typedResponse.data.list
@@ -531,6 +643,25 @@ function getFileList() {
   }).finally(() => {
     fileLoading.value = false
   })
+}
+
+/**
+ * @description 处理文件表格排序变化事件
+ * @param {object} sortInfo 排序信息对象，包含 prop 和 order
+ * @param {string} sortInfo.prop 排序的字段名
+ * @param {string | null} sortInfo.order 排序的顺序 ('ascending', 'descending', null)
+ */
+function handleFileSortChange({ prop }: { prop: string, order: string | null }) {
+  // 如果点击的是同一个字段，则切换排序顺序
+  if (fileSortData.sortBy === prop) {
+    // 当前为正序则切换为倒序，否则切换为正序
+    fileSortData.sortOrder = fileSortData.sortOrder === "asc" ? "desc" : "asc"
+  } else {
+    // 切换字段时，默认正序
+    fileSortData.sortBy = prop
+    fileSortData.sortOrder = "asc"
+  }
+  getFileList()
 }
 
 // 处理文件选择变化
@@ -757,6 +888,25 @@ function handleSelectionChange(selection: KnowledgeBaseData[]) {
   multipleSelection.value = selection
 }
 
+/**
+ * @description 处理表格排序变化事件（只允许正序和倒序切换）
+ * @param {object} sortInfo 排序信息对象，包含 prop 和 order
+ * @param {string} sortInfo.prop 排序的字段名
+ * @param {string | null} sortInfo.order 排序的顺序 ('ascending', 'descending', null)
+ */
+function handleSortChange({ prop }: { prop: string, order: string | null }) {
+  // 如果点击的是同一个字段，则切换排序顺序
+  if (sortData.sortBy === prop) {
+    // 当前为正序则切换为倒序，否则切换为正序
+    sortData.sortOrder = sortData.sortOrder === "asc" ? "desc" : "asc"
+  } else {
+    // 切换字段时，默认正序
+    sortData.sortBy = prop
+    sortData.sortOrder = "asc"
+  }
+  getTableData()
+}
+
 // 监听分页参数的变化
 watch([() => paginationData.currentPage, () => paginationData.pageSize], getTableData, { immediate: true })
 
@@ -901,6 +1051,10 @@ function isLoadingStatus(status: string) {
 function shouldShowProgressCount(status: string) {
   return !["starting", "not_found"].includes(status)
 }
+
+// 用户列表相关状态
+const userList = ref<{ id: number, username: string }[]>([])
+const userLoading = ref(false)
 </script>
 
 <template>
@@ -949,17 +1103,16 @@ function shouldShowProgressCount(status: string) {
         </div>
 
         <div class="table-wrapper">
-          <el-table :data="tableData" @selection-change="handleSelectionChange">
+          <el-table :data="tableData" @selection-change="handleSelectionChange" @sort-change="handleSortChange">
             <el-table-column type="selection" width="50" align="center" />
             <el-table-column label="序号" align="center" width="80">
               <template #default="scope">
                 {{ (paginationData.currentPage - 1) * paginationData.pageSize + scope.$index + 1 }}
               </template>
             </el-table-column>
-            <el-table-column prop="name" label="知识库名称" align="center" min-width="120" />
+            <el-table-column prop="name" label="知识库名称" align="center" min-width="120" sortable="custom" />
             <el-table-column prop="description" label="描述" align="center" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="doc_num" label="文档数量" align="center" width="100" />
-            <!-- 添加语言列 -->
+            <el-table-column prop="doc_num" label="文档数量" align="center" width="120" />
             <el-table-column label="语言" align="center" width="100">
               <template #default="scope">
                 <el-tag type="info" size="small">
@@ -975,12 +1128,12 @@ function shouldShowProgressCount(status: string) {
                 </el-tag>
               </template>
             </el-table-column>
-            <el-table-column label="创建时间" align="center" width="180">
+            <el-table-column label="创建时间" align="center" width="180" sortable="custom">
               <template #default="scope">
                 {{ scope.row.create_date }}
               </template>
             </el-table-column>
-            <el-table-column fixed="right" label="操作" width="180" align="center">
+            <el-table-column fixed="right" label="操作" width="300" align="center">
               <template #default="scope">
                 <el-button
                   type="primary"
@@ -991,6 +1144,16 @@ function shouldShowProgressCount(status: string) {
                   @click="handleView(scope.row)"
                 >
                   查看
+                </el-button>
+                <el-button
+                  type="warning"
+                  text
+                  bg
+                  size="small"
+                  :icon="Edit"
+                  @click="handleEdit(scope.row)"
+                >
+                  修改
                 </el-button>
                 <el-button
                   type="danger"
@@ -1106,10 +1269,10 @@ function shouldShowProgressCount(status: string) {
           <!-- === 结束进度显示 === -->
 
           <div class="document-table-wrapper" v-loading="documentLoading || (isBatchPolling && !batchProgress)">
-            <el-table :data="documentList" style="width: 100%">
-              <el-table-column prop="name" label="名称" min-width="180" show-overflow-tooltip />
+            <el-table :data="documentList" style="width: 100%" @sort-change="handleDocSortChange">
+              <el-table-column prop="name" label="名称" min-width="180" show-overflow-tooltip sortable="custom" />
               <el-table-column prop="chunk_num" label="分块数" width="100" align="center" />
-              <el-table-column label="上传日期" width="180" align="center">
+              <el-table-column prop="create_date" label="上传日期" width="180" align="center" sortable="custom">
                 <template #default="scope">
                   {{ scope.row.create_date }}
                 </template>
@@ -1188,6 +1351,22 @@ function shouldShowProgressCount(status: string) {
               <el-option label="英文" value="English" />
             </el-select>
           </el-form-item>
+          <el-form-item label="创建人" prop="creator_id">
+            <el-select
+              v-model="knowledgeBaseForm.creator_id"
+              placeholder="请选择创建人"
+              style="width: 100%"
+              filterable
+              :loading="userLoading"
+            >
+              <el-option
+                v-for="user in userList"
+                :key="user.id"
+                :label="user.username"
+                :value="user.id"
+              />
+            </el-select>
+          </el-form-item>
           <el-form-item label="权限" prop="permission">
             <el-select v-model="knowledgeBaseForm.permission" placeholder="请选择权限">
               <el-option label="个人" value="me" />
@@ -1209,7 +1388,46 @@ function shouldShowProgressCount(status: string) {
         </template>
       </el-dialog>
 
-      <!-- 添加文档对话框 -->
+      <!-- 修改知识库对话框 -->
+      <el-dialog
+        v-model="editDialogVisible"
+        title="修改知识库权限"
+        width="40%"
+      >
+        <el-form
+          label-width="120px"
+        >
+          <el-form-item label="知识库名称">
+            <span>{{ editForm.name }}</span>
+          </el-form-item>
+          <el-form-item label="权限设置">
+            <el-select v-model="editForm.permission" placeholder="请选择权限">
+              <el-option label="个人" value="me" />
+              <el-option label="团队" value="team" />
+            </el-select>
+          </el-form-item>
+          <el-form-item>
+            <div style="color: #909399; font-size: 12px; line-height: 1.5;">
+              个人权限：仅自己可见和使用<br>
+              团队权限：团队成员可见和使用
+            </div>
+          </el-form-item>
+        </el-form>
+        <template #footer>
+          <el-button @click="editDialogVisible = false">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            :loading="editLoading"
+            @click="submitEdit"
+          >
+            确认修改
+          </el-button>
+        </template>
+      </el-dialog>
+
+      <!-- 文档对话框 -->
       <el-dialog
         v-model="addDocumentDialogVisible"
         title="添加文档到知识库"
@@ -1220,10 +1438,11 @@ function shouldShowProgressCount(status: string) {
             :data="fileList"
             style="width: 100%"
             @selection-change="handleFileSelectionChange"
+            @sort-change="handleFileSortChange"
           >
             <el-table-column type="selection" width="55" />
-            <el-table-column prop="name" label="文件名" min-width="180" show-overflow-tooltip />
-            <el-table-column prop="size" label="大小" width="100" align="center">
+            <el-table-column prop="name" label="文件名" min-width="180" show-overflow-tooltip sortable="custom" />
+            <el-table-column prop="size" label="大小" width="100" align="center" sortable="custom">
               <template #default="scope">
                 {{ formatFileSize(scope.row.size) }}
               </template>
@@ -1233,7 +1452,11 @@ function shouldShowProgressCount(status: string) {
                 {{ formatFileType(scope.row.type) }}
               </template>
             </el-table-column>
-          <!-- 移除上传日期列 -->
+            <el-table-column prop="create_date" label="创建时间" align="center" width="180" sortable="custom">
+              <template #default="scope">
+                {{ scope.row.create_date }}
+              </template>
+            </el-table-column>
           </el-table>
 
           <!-- 分页控件 -->

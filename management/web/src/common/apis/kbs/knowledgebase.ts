@@ -5,6 +5,8 @@ export function getKnowledgeBaseListApi(params: {
   currentPage: number
   size: number
   name?: string
+  sort_by: string
+  sort_order: string
 }) {
   return request({
     url: "/api/v1/knowledgebases",
@@ -27,6 +29,7 @@ export function createKnowledgeBaseApi(data: {
   description?: string
   language?: string
   permission?: string
+  creator_id: string
 }) {
   return request({
     url: "/api/v1/knowledgebases",

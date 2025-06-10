@@ -1,6 +1,6 @@
 import oracledb
 import os
-from management.server.utils import generate_uuid, encrypt_password
+import redis
 from minio import Minio
 from dotenv import load_dotenv
 from elasticsearch import Elasticsearch  
@@ -19,15 +19,32 @@ def is_running_in_docker():
     except:
         return docker_env
 
-# 根据运行环境选择合适的主机地址
-DB_HOST = 'host.docker.internal' if is_running_in_docker() else 'localhost'
-MINIO_HOST = 'host.docker.internal' if is_running_in_docker() else 'localhost'
-ES_HOST = 'es01' if is_running_in_docker() else 'localhost'
+
+# 根据运行环境选择合适的主机地址和端口
+if is_running_in_docker():
+    MYSQL_HOST = "mysql"
+    MYSQL_PORT = 3306
+    MINIO_HOST = "minio"
+    MINIO_PORT = 9000
+    ES_HOST = "es01"
+    ES_PORT = 9200
+    REDIS_HOST = "redis"
+    REDIS_PORT = 6379
+else:
+    MYSQL_HOST = "localhost"
+    MYSQL_PORT = int(os.getenv("MYSQL_PORT", "5455"))
+    MINIO_HOST = "localhost"
+    MINIO_PORT = int(os.getenv("MINIO_PORT", "9000"))
+    ES_HOST = "localhost"
+    ES_PORT = int(os.getenv("ES_PORT", "9200"))
+    REDIS_HOST = "localhost"
+    REDIS_PORT = int(os.getenv("REDIS_PORT", "6379"))
 
 # Oracle数据库连接配置
 DB_CONFIG = {
     "service_name": os.getenv("ORACLE_DB", "freepdb1"),
-    "host": os.getenv("ORACLE_HOST", "localhost"),
+    "host": os.getenv("ORACLE_HOST", "207.211.165.19"),
+    #"host": os.getenv("ORACLE_HOST", "localhost"),
     "port": os.getenv("ORACLE_PORT", "1521"),
     "user": os.getenv("ORACLE_USER", "conrag"),
     "password": os.getenv("ORACLE_PASSWORD", "conrag")
@@ -48,6 +65,15 @@ ES_CONFIG = {
     "password": os.getenv("ELASTIC_PASSWORD", "infini_rag_flow"),
     "use_ssl": os.getenv("ES_USE_SSL", "false").lower() == "true"
 }
+
+# Redis连接配置
+REDIS_CONFIG = {
+    "host": REDIS_HOST,
+    "port": REDIS_PORT,
+    "password": os.getenv("REDIS_PASSWORD", "infini_rag_flow"),
+    "decode_responses": False,
+}
+
 
 def get_db_connection():
     """创建Oracle数据库连接"""
@@ -94,6 +120,20 @@ def get_es_client():
     except Exception as e:
         print(f"Elasticsearch连接失败: {str(e)}")
         raise e
+
+
+def get_redis_connection():
+    """创建Redis连接"""
+    try:
+        # 使用配置创建Redis连接
+        r = redis.Redis(**REDIS_CONFIG)
+        # 测试连接
+        r.ping()
+        return r
+    except Exception as e:
+        print(f"Redis连接失败: {str(e)}")
+        raise e
+
 
 def test_connections():
     """测试数据库和MinIO连接"""

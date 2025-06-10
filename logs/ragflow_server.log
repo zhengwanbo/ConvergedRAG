@@ -19,3 +19,6 @@
 2025-04-26 21:39:57,149 INFO     18731 ragflow_server log path: /Users/wanzheng/src/ai_code/ConvergedRAG/logs/ragflow_server.log, log levels: {'peewee': 'WARNING', 'pdfminer': 'WARNING', 'root': 'INFO'}
 2025-04-26 21:39:57,395 INFO     18731 can't import package 'torch'
 2025-04-26 21:39:59,446 INFO     18731 init database on cluster mode successfully
+2025-06-08 09:51:48,043 INFO     57521 ragflow_server log path: /Users/wanzheng/src/ai_code/ConvergedRAG/logs/ragflow_server.log, log levels: {'peewee': 'WARNING', 'pdfminer': 'WARNING', 'root': 'INFO'}
+2025-06-08 09:51:52,018 INFO     57521 found 0 gpus
+2025-06-08 09:51:58,521 INFO     57521 init database on cluster mode successfully
