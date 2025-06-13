@@ -71,14 +71,27 @@ class KnowledgebaseService:
 
             logger.info("get_knowledgebase_list results: %s", results)
             # results
-            formatted_km = [{k.lower(): v for k, v in item.items()} for item in results]
-            for result in formatted_km:
-                # 处理空描述
-                # 确保使用正确的列名（如 "DESCRIPTION"）
-                if not result.get("description"):  # 使用 get() 避免 KeyError
+            formatted_km = []
+            for item in results:
+                # 创建新字典，处理键名小写
+                result = {k.lower(): v for k, v in item.items()}
+
+                # 处理 CLOB 类型的 description 字段
+                if "description" in result and result["description"] is not None:
+                    # 将 CLOB 对象转换为字符串
+                    result["description"] = str(result["description"])
+                    # 如果转换后为空字符串，设置默认描述
+                    if not result["description"]:
+                        result["description"] = "暂无描述"
+                else:
+                    # 如果 description 不存在或为 None，设置默认描述
                     result["description"] = "暂无描述"
+
+                # 处理日期字段
                 if result.get("create_date"):
                     result["create_date"] = result["create_date"].strftime("%Y-%m-%d %H:%M:%S")
+
+                formatted_km.append(result)
 
             # 获取总数
             count_query = "SELECT COUNT(*) as total FROM knowledgebase"
@@ -120,35 +133,26 @@ class KnowledgebaseService:
                 WHERE k.id = :id
             """
             cursor.execute(query, {'id': kb_id})
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
             result = cursor.fetchone()
-            formatted_km = []
-
             if result:
+                formatted_km = {k.lower(): v for k, v in result.items()}
                 # 处理空描述
-                if not result.get('DESCRIPTION'):
-                    result['DESCRIPTION'] = "暂无描述"
-                # 处理时间格式
-                # if result.get('CREATE_DATE'):
-                #     if isinstance(result['CREATE_DATE'], datetime):
-                #         result['CREATE_DATE'] = result['CREATE_DATE'].strftime('%Y-%m-%d %H:%M:%S')
-                #     elif isinstance(result['CREATE_DATE'], str):
-                #         try:
-                #             datetime.strptime(result['CREATE_DATE'], '%Y-%m-%d %H:%M:%S')
-                #         except ValueError:
-                #             result['CREATE_DATE'] = ""
-
-                formatted_km.append({
-                    "id": result["ID"],
-                    "name": result["NAME"],
-                    "description": result["DESCRIPTION"],
-                    "create_date": result["CREATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if result["CREATE_DATE"] else "",
-                    "update_date": result["UPDATE_DATE"].strftime("%Y-%m-%d %H:%M:%S") if result["UPDATE_DATE"] else "",
-                    "doc_num": result["DOC_NUM"]
-                })
+                # 处理 CLOB 类型的 description 字段
+                if "description" in formatted_km and formatted_km["description"] is not None:
+                    # 将 CLOB 对象转换为字符串
+                    formatted_km["description"] = str(formatted_km["description"])
+                if not formatted_km.get('description'):
+                    formatted_km['description'] = "暂无描述"
+                if formatted_km.get("create_date"):
+                    formatted_km["create_date"] = formatted_km["create_date"].strftime("%Y-%m-%d %H:%M:%S")
+            else:
+                formatted_km = None
 
             cursor.close()
             conn.close()
 
+            logger.info("get_knowledgebase_detail formatted_km: %s", formatted_km)
             return formatted_km
 
         except oracledb.DatabaseError as err:
@@ -178,6 +182,7 @@ class KnowledgebaseService:
     @classmethod
     def create_knowledgebase(cls, **data):
         """创建知识库"""
+        logger.info("create_knowledgebase data: %s", data)
         try:
             # 检查知识库名称是否已存在
             exists = cls._check_name_exists(data['name'])
@@ -222,16 +227,17 @@ class KnowledgebaseService:
 
             # --- 获取动态 embd_id ---
             dynamic_embd_id = None
-            default_embd_id = 'bge-m3___VLLM@VLLM' # Fallback default
+            default_embd_id = 'bge-m3@Ollama' # Fallback default
             try:
                 query_embedding_model = """
                     SELECT llm_name
                     FROM tenant_llm
                     WHERE model_type = 'embedding'
-                    ORDER BY create_time ASC
+                    and tenant_id = :id
+                    ORDER BY create_time DESC
                     FETCH FIRST 1 ROWS ONLY
                 """
-                cursor.execute(query_embedding_model)
+                cursor.execute(query_embedding_model,{'id': tenant_id})
                 cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 embedding_model = cursor.fetchone()
 
@@ -246,9 +252,9 @@ class KnowledgebaseService:
                 print(f"查询 embedding 模型失败: {str(e)}，使用默认值: {dynamic_embd_id}")
                 traceback.print_exc()  # Log the full traceback for debugging
 
-            current_time = datetime.now()
-            create_date = current_time.strftime("%Y-%m-%d %H:%M:%S")
-            create_time = int(current_time.timestamp() * 1000)  # 毫秒级时间戳
+            create_date = datetime.now()
+            #create_date = current_time.strftime("%Y-%m-%d %H:%M:%S")
+            create_time = int(create_date.timestamp() * 1000)  # 毫秒级时间戳
             update_date = create_date
             update_time = create_time
             
@@ -263,9 +269,9 @@ class KnowledgebaseService:
             ) VALUES (
                 TO_CHAR(:1),
                 :2,
-                TO_TIMESTAMP(:3, 'YYYY-MM-DD HH24:MI:SS'),
+                :3,
                 :4,
-                TO_TIMESTAMP(:5, 'YYYY-MM-DD HH24:MI:SS'),
+                :5,
                 :6, :7, :8, :9, :10,
                 :11, :12, :13, :14, :15,
                 :16, :17, :18, :19, :20,
@@ -286,7 +292,7 @@ class KnowledgebaseService:
             })
             
             kb_id = generate_uuid()
-            cursor.execute(query, (
+            param = (
                 kb_id,                                      # id
                 create_time,                                # create_time
                 create_date,                                # create_date
@@ -309,7 +315,12 @@ class KnowledgebaseService:
                 default_parser_config,                      # parser_config
                 0,                                          # pagerank
                 '1'                                         # status
-            ))
+            )
+
+            logger.info("create_knowledgebase insert: %s", query)
+            logger.info("create_knowledgebase param: %s", param)
+
+            cursor.execute(query, param)
             conn.commit()
             
             cursor.close()
@@ -330,10 +341,10 @@ class KnowledgebaseService:
             kb = cls.get_knowledgebase_detail(kb_id)
             if not kb:
                 return None
-            
+            logger.info("update_knowledgebase kb: %s", kb)
             conn = get_db_connection()
             cursor = conn.cursor()
-            
+
             # 如果要更新名称，先检查名称是否已存在
             if data.get('name') and data['name'] != kb['NAME']:
                 exists = cls._check_name_exists(data['name'])
@@ -347,14 +358,18 @@ class KnowledgebaseService:
             if data.get('name'):
                 update_fields.append("name = :name")
                 params['name'] = data['name']
-                
-            if 'description' in data:
-                update_fields.append("description = :description")
-                params['description'] = data['description']
+
+            if data.get('permission'):
+                update_fields.append("permission = :permission")
+                params['permission'] = data['permission']
+
+            # if 'description' in data:
+            #     update_fields.append("description = :description")
+            #     params['description'] = data['description']
             
             # 更新时间
-            current_time = datetime.now()
-            update_date = current_time.strftime('%Y-%m-%d %H:%M:%S')
+            update_date = datetime.now()
+            #update_date = current_time.strftime('%Y-%m-%d %H:%M:%S')
             update_fields.append("update_date = :update_date")
             params['update_date'] = update_date
             
@@ -368,6 +383,10 @@ class KnowledgebaseService:
                 SET {", ".join(update_fields)}
                 WHERE id = :id
             """
+
+            # 日志记录（明确参数名和值）
+            logger.info("update_knowledgebase SQL: %s", query)
+            logger.info("update_knowledgebase params: %s", params)
 
             cursor.execute(query, params)
             conn.commit()
@@ -552,7 +571,7 @@ class KnowledgebaseService:
                 earliest_user = cursor.fetchone()
                 
                 if earliest_user:
-                    created_by = earliest_user[0]
+                    created_by = earliest_user['ID']
                     print(f"使用创建时间最早的用户ID: {created_by}")
                 else:
                     created_by = 'system'
@@ -574,8 +593,8 @@ class KnowledgebaseService:
             # 获取文件信息
             file_placeholders = ', '.join([f':id_{i}' for i in range(len(file_ids))])
             file_query = f"""
-                SELECT id, name, location, size, type 
-                FROM file 
+                SELECT id, name, location,"SIZE", type 
+                FROM files 
                 WHERE id IN ({file_placeholders})
             """
             file_params = {f'id_{i}': file_id for i, file_id in enumerate(file_ids)}
@@ -585,7 +604,6 @@ class KnowledgebaseService:
             
             try:
                 cursor.execute(file_query, file_params)
-                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 files = cursor.fetchall()
                 print(f"[DEBUG] 查询到的文件数据: {files}")
             except Exception as e:
@@ -600,7 +618,8 @@ class KnowledgebaseService:
             added_count = 0
             current_datetime = datetime.now()
             create_time = int(current_datetime.timestamp() * 1000)
-            current_date = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            #current_date = current_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            current_date = current_datetime
 
             for file in files:
                 file_id = file[0]
@@ -619,7 +638,6 @@ class KnowledgebaseService:
                     WHERE d.kb_id = :kb_id AND f2d.file_id = :file_id
                 """
                 cursor.execute(check_query, {'kb_id': kb_id, 'file_id': file_id})
-                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 exists = cursor.fetchone()[0] > 0
                 
                 if exists:
@@ -629,7 +647,7 @@ class KnowledgebaseService:
                 doc_id = generate_uuid()
                 current_datetime = datetime.now()
                 create_time = int(current_datetime.timestamp() * 1000)  # 毫秒级时间戳
-                current_date = current_datetime.strftime("%Y-%m-%d %H:%M:%S")  # 格式化日期字符串
+                current_date = current_datetime  # 格式化日期字符串
                 
                 # 设置默认值
                 default_parser_id = "naive"
@@ -654,15 +672,15 @@ class KnowledgebaseService:
                     INSERT INTO document (
                         id, create_time, create_date, update_time, update_date,
                         thumbnail, kb_id, parser_id, parser_config, source_type,
-                        type, created_by, name, location, size,
+                        type, created_by, name, location, "SIZE",
                         token_num, chunk_num, progress, progress_msg, process_begin_at,
                         process_duation, meta_fields, run, status
                     ) VALUES (
                         :id, :create_time, :create_date, :update_time, :update_date,
                         :thumbnail, :kb_id, :parser_id, :parser_config, :source_type,
-                        :type, :created_by, :name, :location, :size,
+                        :file_type, :created_by, :name, :location, :file_size,
                         :token_num, :chunk_num, :progress, :progress_msg, :process_begin_at,
-                        :process_duation, :meta_fields, :run, :status
+                        :process_duation, :meta_fields, :run_flag, :status
                     )
                 """
 
@@ -677,11 +695,11 @@ class KnowledgebaseService:
                     'parser_id': default_parser_id,
                     'parser_config': default_parser_config,
                     'source_type': default_source_type,
-                    'type': file_type,
+                    'file_type': file_type,
                     'created_by': created_by,
                     'name': file_name,
                     'location': file_location,
-                    'size': file_size,
+                    'file_size': file_size,
                     'token_num': 0,
                     'chunk_num': 0,
                     'progress': 0.0,
@@ -689,12 +707,14 @@ class KnowledgebaseService:
                     'process_begin_at': None,
                     'process_duation': 0.0,
                     'meta_fields': None,
-                    'run': '0',
+                    'run_flag': '0',
                     'status': '1'
                 }
 
+                logger.info("[DEBUG] formatted_km: %s", doc_query)
+                logger.info("[DEBUG] doc_params: %s", doc_params)
+
                 cursor.execute(doc_query, doc_params)
-                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
 
                 # 创建文件到文档的映射
                 f2d_id = generate_uuid()
@@ -718,8 +738,10 @@ class KnowledgebaseService:
                     'document_id': doc_id
                 }
 
+                logger.info("[DEBUG] add_documents_to_knowledgebase f2d_query: %s", f2d_query)
+                logger.info("[DEBUG] add_documents_to_knowledgebase f2d_params: %s", f2d_params)
+
                 cursor.execute(f2d_query, f2d_params)
-                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 added_count += 1
 
             # 更新知识库文档数量
@@ -816,10 +838,14 @@ class KnowledgebaseService:
             doc_query = """
                 SELECT d.id, d.name, d.location, d.type, d.kb_id, d.parser_id, d.parser_config, d.created_by
                 FROM document d
-                WHERE d.id = %s
+                WHERE d.id = :1
             """
             cursor.execute(doc_query, (doc_id,))
-            doc_info = cursor.fetchone()
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+            result = cursor.fetchone()
+            if result:
+                doc_info = {k.lower(): v for k, v in result.items()}
+            logger.info("[DEBUG] parse_document doc_info: %s", doc_info)
 
             if not doc_info:
                 raise Exception("文档不存在")
@@ -827,14 +853,24 @@ class KnowledgebaseService:
             # 获取关联的文件信息 (主要是 parent_id 作为 bucket_name)
             f2d_query = "SELECT file_id FROM file2document WHERE document_id = :1"
             cursor.execute(f2d_query, (doc_id,))
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
             f2d_result = cursor.fetchone()
+
+            logger.info("[DEBUG] parse_document f2d_result: %s", f2d_result)
             if not f2d_result:
                 raise Exception("无法找到文件到文档的映射关系")
-            file_id = f2d_result['file_id']
+            file_id = f2d_result['FILE_ID']
 
-            file_query = "SELECT parent_id FROM file WHERE id = :1"
+            logger.info("[DEBUG] parse_document file_id: %s", file_id)
+
+            file_query = "SELECT parent_id FROM files WHERE id = :1"
             cursor.execute(file_query, (file_id,))
-            file_info = cursor.fetchone()
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+            result = cursor.fetchone()
+            if result:
+                file_info = {k.lower(): v for k, v in result.items()}
+
+            logger.info("[DEBUG] parse_document file_info: %s", file_info)
             if not file_info:
                 raise Exception("无法找到文件记录")
 
@@ -842,11 +878,17 @@ class KnowledgebaseService:
             # 根据doc_id查询document这张表，得到kb_id
             kb_id_query = "SELECT kb_id FROM document WHERE id = :1"
             cursor.execute(kb_id_query, (doc_id,))
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+
             kb_id = cursor.fetchone()
+            logger.info("[DEBUG] parse_document kb_id: %s", kb_id)
             # 根据kb_id查询knowledgebase这张表，得到created_by
             kb_query = "SELECT created_by FROM knowledgebase WHERE id = :1"
-            cursor.execute(kb_query, (kb_id["kb_id"],))
-            kb_info = cursor.fetchone()
+            cursor.execute(kb_query, (kb_id["KB_ID"],))
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+            result = cursor.fetchone()
+            if result:
+                kb_info = {k.lower(): v for k, v in result.items()}
 
             cursor.close()
             conn.close()
@@ -857,7 +899,7 @@ class KnowledgebaseService:
 
             # 3. 调用后台解析函数
             embedding_config = cls.get_system_embedding_config()
-            parse_result = perform_parse(doc_id, doc_info, file_info, embedding_config)
+            parse_result = perform_parse(doc_id, doc_info, file_info, embedding_config, kb_info)
 
             # 4. 返回解析结果
             return parse_result
@@ -917,10 +959,15 @@ class KnowledgebaseService:
                 WHERE id = :doc_id
             """
             cursor.execute(query, {'doc_id': doc_id})
-            result = cursor.fetchone()
+            cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+            result_v = cursor.fetchone()
 
-            if not result:
+            if not result_v:
                 return {"error": "文档不存在"}
+            if result_v:
+                result = {k.lower(): v for k, v in result_v.items()}
+
+            logger.info("get_document_parse_progress result: %s", result)
 
             # 确保 progress 是浮点数
             progress_value = 0.0
@@ -930,12 +977,14 @@ class KnowledgebaseService:
                 except (ValueError, TypeError):
                     progress_value = 0.0  # 或记录错误
 
-            return {
+            return_value =  {
                 "progress": progress_value,
-                "message": result.get("progress_msg", ""),
+                "message": result['progress_msg'].read() if result['progress_msg'] else "",
                 "status": result.get("status", "0"),
                 "running": result.get("run", "0"),
             }
+            logger.info("get_document_parse_progress 执行结果: %s", return_value)
+            return return_value
 
         except Exception as e:
             print(f"获取文档进度失败 (Doc ID: {doc_id}): {str(e)}")
@@ -1314,12 +1363,14 @@ class KnowledgebaseService:
                     "id": row['ID'],
                     "name": row['NAME'],
                     "progress": float(row['PROGRESS']) if row['PROGRESS'] is not None else 0.0,
-                    "progress_msg": row['PROGRESS_MSG'] if row['PROGRESS_MSG'] else "",
+                    "progress_msg": row['PROGRESS_MSG'].read() if row['PROGRESS_MSG'] else "",
                     "status": row['STATUS'] if row['STATUS'] else "0",
                     "running": row['RUN'] if row['RUN'] else "0"
                 })
 
-            return {"documents": documents}
+            logger.info("get_knowledgebase_parse_progress 执行结果: %s", documents)
+            #return {"documents": documents}
+            return documents
         except oracledb.DatabaseError as e:
             error, = e.args
             print(f"获取文档状态失败: [Code: {error.code}] {error.message}")

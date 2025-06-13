@@ -4,7 +4,7 @@ from tabulate import tabulate
 from dotenv import load_dotenv
 from minio import Minio
 from io import BytesIO
-from database import DB_CONFIG
+from management.server.database import get_db_connection, get_minio_client, get_redis_connection
 
 # 加载环境变量
 load_dotenv("../../docker/.env")
@@ -21,23 +21,36 @@ def get_all_documents():
     """获取所有文档信息及其在MinIO中的存储位置"""
     try:
         # 连接到MySQL数据库
-        conn = oracledb.connect(**DB_CONFIG)
-        cursor = conn.cursor(dictionary=True)
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
         # 首先获取document表的列信息
-        cursor.execute("SHOW COLUMNS FROM document")
-        columns = [column['Field'] for column in cursor.fetchall()]
-        
+        cursor.execute("""
+            SELECT 
+                column_name, 
+                data_type, 
+                data_length, 
+                data_precision, 
+                data_scale, 
+                nullable, 
+                data_default
+            FROM user_tab_columns
+            WHERE table_name = 'DOCUMENT'
+            ORDER BY column_id
+        """)
+        columns = [column[0] for column in cursor.fetchall()]
+        print(f"下载: {columns}")
+
         # 构建动态查询语句，只选择存在的列
         select_fields = []
-        for field in ['id', 'name', 'kb_id', 'location', 'size', 'type', 'created_by', 'create_time']:
-            if field in columns:
+        for field in ['id', 'name', 'kb_id', 'location', 'type', 'created_by', 'create_time']:
+            if field.upper() in columns:
                 select_fields.append(f'd.{field}')
         
         # 添加可选字段
         optional_fields = ['token_count', 'chunk_count']
         for field in optional_fields:
-            if field in columns:
+            if field.upper() in columns:
                 select_fields.append(f'd.{field}')
         
         # 构建并执行查询
@@ -46,23 +59,27 @@ def get_all_documents():
             FROM document d
             ORDER BY d.create_time DESC
         """
+
+        print(f"执行: {query}")
         cursor.execute(query)
-        
-        documents = cursor.fetchall()
-        
+        cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+        results = cursor.fetchall()
+        documents = [{k.lower(): v for k, v in item.items()} for item in results]
+
         # 获取文档与文件的关联信息
         cursor.execute("""
             SELECT f2d.document_id, f.id as file_id, f.parent_id, f.source_type
             FROM file2document f2d
-            JOIN file f ON f2d.file_id = f.id
+            JOIN files f ON f2d.file_id = f.id
         """)
-        
+        cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
         file_mappings = {}
         for row in cursor.fetchall():
-            file_mappings[row['document_id']] = {
-                'file_id': row['file_id'],
-                'parent_id': row['parent_id'],
-                'source_type': row['source_type']
+            result = {k.lower(): v for k, v in row.items()}
+            file_mappings[result['document_id']] = {
+                'file_id': result['file_id'],
+                'parent_id': result['parent_id'],
+                'source_type': result['source_type']
             }
         
         # 整合信息
@@ -85,7 +102,7 @@ def get_all_documents():
             
             # 构建MinIO存储路径
             minio_path = f"{storage_bucket}/{storage_location}"
-            
+            print(f"minio_path: {minio_path}")
             # 构建结果字典，只包含存在的字段
             result_item = {
                 'id': doc_id,
@@ -108,7 +125,7 @@ def get_all_documents():
         
         cursor.close()
         conn.close()
-        
+        print(f"result: {result}")
         return result
     
     except Exception as e:
@@ -195,12 +212,17 @@ def main():
         output_path = os.path.join(download_dir, doc_name)
         
         # 下载文件
-        # success = download_document_from_minio(bucket, object_name, output_path)
-        # if success:
-        #     print(f"\n已成功下载第一个文档: {doc_name}")
-        #     print(f"文件保存在: {os.path.abspath(output_path)}")
-        # else:
-        #     print("\n下载第一个文档失败")
+        print(f"\n 下载文档: {object_name}, {bucket}, {output_path}")
+        success = download_document_from_minio(bucket, object_name, output_path)
+        if success:
+            print(f"\n✅ 已成功下载文档: {doc_name}")
+            print(f"文件保存在: {os.path.abspath(output_path)}")
+        else:
+            print("\n❌ 下载失败，可能原因:")
+            print("- Bucket不存在")
+            print("- 文件路径不正确")
+            print("- 权限不足")
+            print("请检查MinIO控制台确认资源是否存在")
 
 if __name__ == "__main__":
     main()

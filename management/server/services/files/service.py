@@ -107,7 +107,7 @@ def get_files_list(current_page, page_size, name_filter="", sort_by="create_time
 
         # 查询文件列表
         query = f"""
-            SELECT f.id, f.name, f.parent_id, f.type, f."SIZE", f.location, f.source_type, f.create_time
+            SELECT f.id, f.name, f.parent_id, f.type, f."SIZE", f.location, f.source_type, f.create_date
             FROM files f
             {where_clause}
             ORDER BY f.create_time DESC
@@ -118,24 +118,16 @@ def get_files_list(current_page, page_size, name_filter="", sort_by="create_time
         logger.info("执行分页查询SQL参数: %s", params + [offset, page_size])
         cursor.execute(query, params + [offset, page_size])
         cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
-        files = cursor.fetchall()
+        results = cursor.fetchall()
         
         cursor.close()
         conn.close()
         # 格式化结果
-        formatted_files = []
-        for file in files:
-            logger.info("file: %s", file)
-            formatted_files.append({
-                "id": file["ID"],
-                "name": file["NAME"],
-                "parent_id": file["PARENT_ID"],
-                "type": file["TYPE"],
-                "size": file["SIZE"],
-                "location": file["LOCATION"],
-                "source_type": file["SOURCE_TYPE"],
-                "create_time": file["CREATE_TIME"]
-            })
+        formatted_files = [{k.lower(): v for k, v in item.items()} for item in results]
+        for result in formatted_files:
+            # 处理空描述
+            if result.get("create_date"):
+                result["create_date"] = result["create_date"].strftime("%Y-%m-%d %H:%M:%S")
 
         logger.info("执行分页查询: %s", formatted_files)
         return formatted_files, total
@@ -154,7 +146,7 @@ def get_file_info(file_id):
         dict: 文件信息
     """
     try:
-        logger.info("执行: get_file_info")
+        logger.debug("执行: get_file_info")
         # 连接数据库
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -167,7 +159,10 @@ def get_file_info(file_id):
         """, (file_id,))
 
         cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
-        file = cursor.fetchone()
+        result = cursor.fetchone()
+        if result:
+            file = {k.lower(): v for k, v in result.items()}
+
         cursor.close()
         conn.close()
         logger.info("执行: get_file_info result: %s", file)
@@ -190,7 +185,6 @@ def download_file_from_minio(file_id):
     try:
         # 获取文件信息
         file = get_file_info(file_id)
-        
         if not file:
             raise Exception(f"文件 {file_id} 不存在")
         
@@ -198,9 +192,9 @@ def download_file_from_minio(file_id):
         minio_client = get_minio_client()
         
         # 使用parent_id作为存储桶
-        storage_bucket = file['PARENT_ID']
-        storage_location = file['LOCATION']
-        
+        storage_bucket = file['parent_id']
+        storage_location = file['location']
+
         # 检查bucket是否存在
         if not minio_client.bucket_exists(storage_bucket):
             raise Exception(f"存储桶 {storage_bucket} 不存在")
@@ -209,7 +203,7 @@ def download_file_from_minio(file_id):
         response = minio_client.get_object(storage_bucket, storage_location)
         file_data = response.read()
         
-        return file_data, file['NAME']
+        return file_data, file['name']
         
     except Exception as e:
         raise e
@@ -232,21 +226,24 @@ def delete_file(file_id):
         # 查询文件信息
         cursor.execute("""
             SELECT id, parent_id, name, location, type
-            FROM files
-            WHERE id = :1
+            FROM files f
+            WHERE f.type != 'folder' and id = :1
         """, (file_id,))
-        
-        file = cursor.fetchone()
+        cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+        result = cursor.fetchone()
+        if result:
+            file = {k.lower(): v for k, v in result.items()}
+
         if not file:
             cursor.close()
             conn.close()
             return False
         
         # 如果是文件夹，直接返回成功（不处理文件夹）
-        if file['type'] == FileType.FOLDER.value:
-            cursor.close()
-            conn.close()
-            return True
+        # if file['type'] == FileType.FOLDER.value:
+        #     cursor.close()
+        #     conn.close()
+        #     return True
         
         # 查询关联的document记录
         cursor.execute("""
@@ -255,26 +252,27 @@ def delete_file(file_id):
             JOIN document d ON f2d.document_id = d.id
             WHERE f2d.file_id = :1
         """, (file_id,))
-        
-        document_mappings = cursor.fetchall()
-        
+        cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
+        results = cursor.fetchall()
+        document_mappings = [{k.lower(): v for k, v in item.items()} for item in results]
+
         # 创建MinIO客户端（在事务外创建）
         minio_client = get_minio_client()
         
         # 开始事务
         try:
             # 注意：这里不再使用conn.start_transaction()，而是使用execute直接执行事务相关命令
-            cursor.execute("START TRANSACTION")
+            # cursor.execute("START TRANSACTION")
             
             # 1. 先删除file表中的记录
-            cursor.execute("DELETE FROM files WHERE id = %s", (file_id,))
+            cursor.execute("DELETE FROM files WHERE id = :1", (file_id,))
             
             # 2. 删除关联的file2document记录
-            cursor.execute("DELETE FROM file2document WHERE file_id = %s", (file_id,))
+            cursor.execute("DELETE FROM file2document WHERE file_id = :1 ", (file_id,))
             
             # 3. 删除关联的document记录
             for doc_mapping in document_mappings:
-                cursor.execute("DELETE FROM document WHERE id = %s", (doc_mapping['document_id'],))
+                cursor.execute("DELETE FROM document WHERE id = :1", (doc_mapping['document_id'],))
             
             # 提交事务
             cursor.execute("COMMIT")
@@ -361,13 +359,13 @@ def batch_delete_files(file_ids):
                     FROM files
                     WHERE id = :1
                 """, (file_id,))
-                
+                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 file = cursor.fetchone()
                 if not file:
                     continue
                 
                 # 如果是文件夹，跳过
-                if file['type'] == FileType.FOLDER.value:
+                if file['TYPE'] == FileType.FOLDER.value:
                     continue
                 
                 # 查询关联的document记录
@@ -377,7 +375,7 @@ def batch_delete_files(file_ids):
                     JOIN document d ON f2d.document_id = d.id
                     WHERE f2d.file_id = :1
                 """, (file_id,))
-                
+                cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                 document_mappings = cursor.fetchall()
                 
                 # 1. 先删除file表中的记录
@@ -388,7 +386,7 @@ def batch_delete_files(file_ids):
                 
                 # 3. 删除关联的document记录
                 for doc_mapping in document_mappings:
-                    cursor.execute("DELETE FROM document WHERE id = :1", (doc_mapping['document_id'],))
+                    cursor.execute("DELETE FROM document WHERE id = :1", (doc_mapping['DOCUMENT_ID'],))
                 
                 success_count += 1
             
@@ -404,13 +402,13 @@ def batch_delete_files(file_ids):
                         FROM files
                         WHERE id = :1
                     """, (file_id,))
-                    
+                    cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                     file = cursor.fetchone()
-                    if not file and file['type'] != FileType.FOLDER.value:
+                    if not file and file['TYPE'] != FileType.FOLDER.value:
                         # 检查bucket是否存在
-                        if minio_client.bucket_exists(file['parent_id']):
+                        if minio_client.bucket_exists(file['PARENT_ID']):
                             # 删除文件
-                            minio_client.remove_object(file['parent_id'], file['location'])
+                            minio_client.remove_object(file['PARENT_ID'], file['LOCATION'])
                         
                         # 如果有关联的document，也删除document存储的文件
                         cursor.execute("""
@@ -419,11 +417,11 @@ def batch_delete_files(file_ids):
                             JOIN document d ON f2d.document_id = d.id
                             WHERE f2d.file_id = :1  
                         """, (file_id,))
-                        
+                        cursor.rowfactory = lambda *args: dict(zip([d[0] for d in cursor.description], args))
                         document_mappings = cursor.fetchall()
                         for doc_mapping in document_mappings:
-                            if minio_client.bucket_exists(doc_mapping['kb_id']):
-                                minio_client.remove_object(doc_mapping['kb_id'], doc_mapping['location'])
+                            if minio_client.bucket_exists(doc_mapping['KB_ID']):
+                                minio_client.remove_object(doc_mapping['KB_ID'], doc_mapping['LOCATION'])
                 except Exception as e:
                     # 即使MinIO删除失败，也不影响数据库操作的成功
                     print(f"从MinIO删除文件失败: {str(e)}")

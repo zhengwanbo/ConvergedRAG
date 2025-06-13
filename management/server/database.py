@@ -151,7 +151,16 @@ def test_connections():
         minio_client = get_minio_client()
         buckets = minio_client.list_buckets()
         print(f"MinIO连接测试成功，共有 {len(buckets)} 个存储桶")
-        
+
+        # 列出所有可用的存储桶进行验证
+        for bucket in buckets:
+            print(f"存储桶: {bucket.name}, 创建时间: {bucket.creation_date}")
+
+        bucket_name = '2663e11240eb11f0baac02001701d9a5'
+        # 检查bucket是否存在
+        if not minio_client.bucket_exists(bucket_name):
+            raise Exception(f"存储桶 {bucket_name} 不存在")
+
         # 测试Elasticsearch连接
         try:
             es_client = get_es_client()
