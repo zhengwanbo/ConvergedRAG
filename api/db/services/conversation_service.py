@@ -152,12 +152,13 @@ def completion(tenant_id, chat_id, question, name="New session", session_id=None
 def iframe_completion(dialog_id, question, session_id=None, stream=True, **kwargs):
     e, dia = DialogService.get_by_id(dialog_id)
     assert e, "Dialog not found"
+
     if not session_id:
         session_id = get_uuid()
         conv = {
             "id": session_id,
             "dialog_id": dialog_id,
-            "user_id": kwargs.get("user_id", ""),
+            "user_id": kwargs.get("user_id", "100"),
             "message": [{"role": "assistant", "content": dia.prompt_config["prologue"], "created_at": time.time()}]
         }
         API4ConversationService.save(**conv)
