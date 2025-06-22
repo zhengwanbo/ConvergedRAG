@@ -599,7 +599,7 @@ class Tenant(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
     name = CharField(max_length=100, null=True, help_text="Tenant name", index=True)
     public_key = CharField(max_length=255, null=True, index=True)
-    llm_id = CharField(max_length=128, null=False, help_text="default llm ID", index=True)
+    llm_id = CharField(max_length=128, null=True, help_text="default llm ID", index=True)
     embd_id = CharField(
         max_length=128,
         null=False,
