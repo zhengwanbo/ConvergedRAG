@@ -13,7 +13,6 @@ from peewee import NodeList
 from peewee import CharField
 from peewee import TextField
 
-
 #from peewee import compiler
 import logging
 from playhouse.pool import PooledDatabase

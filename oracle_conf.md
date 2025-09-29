@@ -34,6 +34,11 @@ BEGIN
 END;
 /
 
+BEGIN 
+   CTX_DDL.CREATE_PREFERENCE('ragvector.world_lexer','WORLD_LEXER');
+   END;
+/
+
 CREATE TABLE IF NOT EXISTS ttt (
     id varchar2(100)
     ,text CLOB

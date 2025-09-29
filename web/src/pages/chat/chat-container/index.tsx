@@ -15,6 +15,7 @@ import PdfDrawer from '@/components/pdf-drawer';
 import { useClickDrawer } from '@/components/pdf-drawer/hooks';
 import {
   useFetchNextConversation,
+  useFetchNextDialog,
   useGetChatSearchParams,
 } from '@/hooks/chat-hooks';
 import { useFetchUserInfo } from '@/hooks/user-setting-hooks';
@@ -29,10 +30,12 @@ interface IProps {
 const ChatContainer = ({ controller }: IProps) => {
   const { conversationId } = useGetChatSearchParams();
   const { data: conversation } = useFetchNextConversation();
+  const { data: currentDialog } = useFetchNextDialog();
 
   const {
     value,
-    ref,
+    scrollRef,
+    messageContainerRef,
     loading,
     sendLoading,
     derivedMessages,
@@ -55,7 +58,12 @@ const ChatContainer = ({ controller }: IProps) => {
   return (
     <>
       <Flex flex={1} className={styles.chatContainer} vertical>
-        <Flex flex={1} vertical className={styles.messageContainer}>
+        <Flex
+          flex={1}
+          vertical
+          className={styles.messageContainer}
+          ref={messageContainerRef}
+        >
           <div>
             <Spin spinning={loading}>
               {derivedMessages?.map((message, i) => {
@@ -70,7 +78,7 @@ const ChatContainer = ({ controller }: IProps) => {
                     item={message}
                     nickname={userInfo.nickname}
                     avatar={userInfo.avatar}
-                    avatarDialog={conversation.avatar}
+                    avatarDialog={currentDialog.icon}
                     reference={buildMessageItemReference(
                       {
                         message: derivedMessages,
@@ -88,7 +96,7 @@ const ChatContainer = ({ controller }: IProps) => {
               })}
             </Spin>
           </div>
-          <div ref={ref} />
+          <div ref={scrollRef} />
         </Flex>
         <MessageInput
           disabled={disabled}

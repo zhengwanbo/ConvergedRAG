@@ -18,7 +18,7 @@ import os
 import re
 from datetime import datetime, timedelta
 from flask import request, Response
-from api.db.services.llm_service import TenantLLMService
+from api.db.services.llm_service import LLMBundle
 from flask_login import login_required, current_user
 
 from api.db import VALID_FILE_TYPES, VALID_TASK_STATUS, FileType, LLMType, ParserType, FileSource
@@ -45,6 +45,7 @@ from rag.utils.storage_factory import STORAGE_IMPL
 from api.db.services.canvas_service import UserCanvasService
 from agent.canvas import Canvas
 from functools import partial
+from pathlib import Path
 
 
 @manager.route('/new_token', methods=['POST'])  # noqa: F821
@@ -439,7 +440,8 @@ def upload():
             "name": filename,
             "location": location,
             "size": len(blob),
-            "thumbnail": thumbnail(filename, blob)
+            "thumbnail": thumbnail(filename, blob),
+            "suffix": Path(filename).suffix.lstrip("."),
         }
 
         form_data = request.form
@@ -865,7 +867,7 @@ def retrieval():
     similarity_threshold = float(req.get("similarity_threshold", 0.2))
     vector_similarity_weight = float(req.get("vector_similarity_weight", 0.3))
     top = int(req.get("top_k", 1024))
-    highlight = bool(req.get("highlight", False))
+    highlight = bool(req.get("highlight", False)) 
 
     try:
         kbs = KnowledgebaseService.get_by_ids(kb_ids)
@@ -875,14 +877,12 @@ def retrieval():
                 data=False, message='Knowledge bases use different embedding models or does not exist."',
                 code=settings.RetCode.AUTHENTICATION_ERROR)
 
-        embd_mdl = TenantLLMService.model_instance(
-            kbs[0].tenant_id, LLMType.EMBEDDING.value, llm_name=kbs[0].embd_id)
+        embd_mdl = LLMBundle(kbs[0].tenant_id, LLMType.EMBEDDING, llm_name=kbs[0].embd_id)
         rerank_mdl = None
         if req.get("rerank_id"):
-            rerank_mdl = TenantLLMService.model_instance(
-                kbs[0].tenant_id, LLMType.RERANK.value, llm_name=req["rerank_id"])
+            rerank_mdl = LLMBundle(kbs[0].tenant_id, LLMType.RERANK, llm_name=req["rerank_id"])
         if req.get("keyword", False):
-            chat_mdl = TenantLLMService.model_instance(kbs[0].tenant_id, LLMType.CHAT)
+            chat_mdl = LLMBundle(kbs[0].tenant_id, LLMType.CHAT)
             question += keyword_extraction(chat_mdl, question)
         ranks = settings.retrievaler.retrieval(question, embd_mdl, kbs[0].tenant_id, kb_ids, page, size,
                                                similarity_threshold, vector_similarity_weight, top,

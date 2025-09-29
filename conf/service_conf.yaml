@@ -57,21 +57,50 @@ redis:
 #   secret: 'secret'
 #   tenant_id: 'tenant_id'
 #   container_name: 'container_name'
+# The OSS object storage uses the MySQL configuration above by default. If you need to switch to another object storage service, please uncomment and configure the following parameters.
+# opendal:
+#   scheme: 'mysql'  # Storage type, such as s3, oss, azure, etc.
+#   config:
+#     oss_table: 'opendal_storage'
 # user_default_llm:
-#   factory: 'Tongyi-Qianwen'
-#   api_key: 'sk-xxxxxxxxxxxxx'
-#   base_url: ''
+#   factory: 'BAAI'
+#   api_key: 'backup'
+#   base_url: 'backup_base_url'
+#   default_models:
+#     chat_model:
+#       name: 'qwen2.5-7b-instruct'
+#       factory: 'xxxx'
+#       api_key: 'xxxx'
+#       base_url: 'https://api.xx.com'
+#     embedding_model:
+#       name: 'bge-m3'
+#     rerank_model: 'bge-reranker-v2'
+#     asr_model:
+#       model: 'whisper-large-v3' # alias of name
+#     image2text_model: ''
 # oauth:
+#   oauth2:
+#     display_name: "OAuth2"
+#     client_id: "your_client_id"
+#     client_secret: "your_client_secret"
+#     authorization_url: "https://your-oauth-provider.com/oauth/authorize"
+#     token_url: "https://your-oauth-provider.com/oauth/token"
+#     userinfo_url: "https://your-oauth-provider.com/oauth/userinfo"
+#     redirect_uri: "https://your-app.com/v1/user/oauth/callback/oauth2"
+#   oidc:
+#     display_name: "OIDC"
+#     client_id: "your_client_id"
+#     client_secret: "your_client_secret"
+#     issuer: "https://your-oauth-provider.com/oidc"
+#     scope: "openid email profile"
+#     redirect_uri: "https://your-app.com/v1/user/oauth/callback/oidc"
 #   github:
-#     client_id: xxxxxxxxxxxxxxxxxxxxxxxxx
-#     secret_key: xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-#     url: https://github.com/login/oauth/access_token
-#   feishu:
-#     app_id: cli_xxxxxxxxxxxxxxxxxxx
-#     app_secret: xxxxxxxxxxxxxxxxxxxxxxxxxxxx
-#     app_access_token_url: https://open.feishu.cn/open-apis/auth/v3/app_access_token/internal
-#     user_access_token_url: https://open.feishu.cn/open-apis/authen/v1/oidc/access_token
-#     grant_type: 'authorization_code'
+#     type: "github"
+#     icon: "github"
+#     display_name: "Github"
+#     client_id: "your_client_id"
+#     client_secret: "your_client_secret"
+#     redirect_uri: "https://your-app.com/v1/user/oauth/callback/github"
 # authentication:
 #   client:
 #     switch: false
@@ -83,3 +112,14 @@ redis:
 #   switch: false
 #   component: false
 #   dataset: false
+# smtp:
+#   mail_server: ""
+#   mail_port: 465
+#   mail_use_ssl: true
+#   mail_use_tls: false
+#   mail_username: ""
+#   mail_password: ""
+#   mail_default_sender:
+#     - "RAGFlow" # display name
+#     - "" # sender email address
+#   mail_frontend_url: "https://your-frontend.example.com"

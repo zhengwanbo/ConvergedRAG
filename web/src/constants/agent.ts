@@ -8,15 +8,19 @@ export const CodeTemplateStrMap = {
     return f"result: {arg1 + arg2}"
 `,
   [ProgrammingLanguage.Javascript]: `const axios = require('axios');
-async function main(args) {
+async function main({}) {
   try {
     const response = await axios.get('https://github.com/infiniflow/ragflow');
-    console.log('Body:', response.data);
+    return 'Body:' + response.data;
   } catch (error) {
-    console.error('Error:', error.message);
+    return 'Error:' + error.message;
   }
-}
-
-module.exports = { main };
-`,
+}`,
 };
+
+export enum AgentGlobals {
+  SysQuery = 'sys.query',
+  SysUserId = 'sys.user_id',
+  SysConversationTurns = 'sys.conversation_turns',
+  SysFiles = 'sys.files',
+}

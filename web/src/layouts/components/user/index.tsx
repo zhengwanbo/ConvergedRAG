@@ -9,7 +9,7 @@ const App: React.FC = () => {
   const { data: userInfo } = useFetchUserInfo();
 
   const toSetting = () => {
-    history.push('/user/profile');
+    history.push('/user-setting');
   };
 
   return (

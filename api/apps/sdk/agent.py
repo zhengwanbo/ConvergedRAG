@@ -93,7 +93,7 @@ def update_agent(tenant_id: str, agent_id: str):
             req["dsl"] = json.dumps(req["dsl"], ensure_ascii=False)
 
         req["dsl"] = json.loads(req["dsl"])
-
+    
     if req.get("title") is not None:
         req["title"] = req["title"].strip()
 

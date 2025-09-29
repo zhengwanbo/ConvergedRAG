@@ -23,7 +23,7 @@ class Session(Base):
     def __init__(self, rag, res_dict):
         self.id = None
         self.name = "New session"
-        self.messages = [{"role": "assistant", "content": "Hi! I am your assistant，can I help you?"}]
+        self.messages = [{"role": "assistant", "content": "Hi! I am your assistant, can I help you?"}]
         for key, value in res_dict.items():
             if key == "chat_id" and value is not None:
                 self.chat_id = None
@@ -38,32 +38,41 @@ class Session(Base):
             res = self._ask_agent(question, stream)
         elif self.__session_type == "chat":
             res = self._ask_chat(question, stream, **kwargs)
-            
-        for line in res.iter_lines():
-            line = line.decode("utf-8")
-            if line.startswith("{"):
-                json_data = json.loads(line)
-                raise Exception(json_data["message"])
-            if not line.startswith("data:"):
-                continue
-            json_data = json.loads(line[5:])
-            if json_data["data"] is True or json_data["data"].get("running_status"):
-                continue
-            answer = json_data["data"]["answer"]
-            reference = json_data["data"].get("reference", {})
-            temp_dict = {
-                "content": answer,
-                "role": "assistant"
-            }
-            if reference and "chunks" in reference:
-                chunks = reference["chunks"]
-                temp_dict["reference"] = chunks
-            message = Message(self.rag, temp_dict)
-            if stream:
+
+        if stream:
+            for line in res.iter_lines():
+                line = line.decode("utf-8")
+                if line.startswith("{"):
+                    json_data = json.loads(line)
+                    raise Exception(json_data["message"])
+                if not line.startswith("data:"):
+                    continue
+                json_data = json.loads(line[5:])
+                if json_data["data"] is True or json_data["data"].get("running_status"):
+                    continue
+                message = self._structure_answer(json_data)
                 yield message
-        if not stream:
-            return message
-    
+        else:
+            try:
+                json_data = json.loads(res.text)
+            except ValueError:
+                raise Exception(f"Invalid response {res}")
+            return self._structure_answer(json_data)
+        
+
+    def _structure_answer(self, json_data):
+        answer = json_data["data"]["answer"]
+        reference = json_data["data"].get("reference", {})
+        temp_dict = {
+            "content": answer,
+            "role": "assistant"
+        }
+        if reference and "chunks" in reference:
+            chunks = reference["chunks"]
+            temp_dict["reference"] = chunks
+        message = Message(self.rag, temp_dict)
+        return message
+
     def _ask_chat(self, question: str, stream: bool, **kwargs):
         json_data = {"question": question, "stream": stream, "session_id": self.id}
         json_data.update(kwargs)
@@ -86,7 +95,7 @@ class Session(Base):
 
 class Message(Base):
     def __init__(self, rag, res_dict):
-        self.content = "Hi! I am your assistant，can I help you?"
+        self.content = "Hi! I am your assistant, can I help you?"
         self.reference = None
         self.role = "assistant"
         self.prompt = None

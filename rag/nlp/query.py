@@ -16,13 +16,12 @@
 
 import logging
 import json
-import math
 import re
 from collections import defaultdict
 
 from rag.utils.doc_store_conn import MatchTextExpr
 from rag.nlp import rag_tokenizer, term_weight, synonym
-import numpy as np
+
 
 class FulltextQueryer:
     def __init__(self):
@@ -72,7 +71,19 @@ class FulltextQueryer:
             txt = otxt
         return txt
 
+    @staticmethod
+    def add_space_between_eng_zh(txt):
+        # (ENG/ENG+NUM) + ZH
+        txt = re.sub(r'([A-Za-z]+[0-9]+)([\u4e00-\u9fa5]+)', r'\1 \2', txt)
+        # ENG + ZH
+        txt = re.sub(r'([A-Za-z])([\u4e00-\u9fa5]+)', r'\1 \2', txt)
+        # ZH + (ENG/ENG+NUM)
+        txt = re.sub(r'([\u4e00-\u9fa5]+)([A-Za-z]+[0-9]+)', r'\1 \2', txt)
+        txt = re.sub(r'([\u4e00-\u9fa5]+)([A-Za-z])', r'\1 \2', txt)
+        return txt
+
     def question(self, txt, tbl="qa", min_match: float = 0.6):
+        txt = FulltextQueryer.add_space_between_eng_zh(txt)
         txt = re.sub(
             r"[ :|\r\n\t,，。？?/`!！&^%%()\[\]{}<>]+",
             " ",
@@ -128,35 +139,16 @@ class FulltextQueryer:
 
         txt = FulltextQueryer.rmWWW(txt)
         qs, keywords = [], []
-        temp_variable = self.tw.split(txt)[:256]
         for tt in self.tw.split(txt)[:256]:  # .split():
             if not tt:
                 continue
             keywords.append(tt)
             twts = self.tw.weights([tt])
-            #add by walter jin
-            # oracle Weight Range 0.1~10
-            # so here : Min-Max Normalization
-            normalization_weihht = {}
-            weights_arr = [item[1] for item in twts]
-            def normalize_to_range(arr, new_min=1, new_max=10):
-                old_min, old_max = np.min(arr), np.max(arr)
-                return (arr - old_min) / (old_max - old_min) * (new_max - new_min) + new_min
-            normalization_arr = normalize_to_range(weights_arr)
-            for index in range(0,len(weights_arr)):
-                normalization_weihht[weights_arr[index]] = normalization_arr[index]
-
             syns = self.syn.lookup(tt)
             if syns and len(keywords) < 32:
                 keywords.extend(syns)
             logging.debug(json.dumps(twts, ensure_ascii=False))
             tms = []
-            # add by walter jin
-            extra_info = {"question":txt,
-                          "tms":[],
-                          "tms_total_weight":-1,
-                          "syns":[],
-                          "syns_total_weight":-1}
             for tk, w in sorted(twts, key=lambda x: x[1] * -1):
                 sm = (
                     rag_tokenizer.fine_grained_tokenize(tk).split()
@@ -210,19 +202,8 @@ class FulltextQueryer:
                     for s in syns
                 ]
             )
-            #add by walter jin
-            extra_syns = " ACCUM ".join(
-                [
-                    '"%s"'
-                    % rag_tokenizer.tokenize(FulltextQueryer.subSpecialChar(s))
-                    for s in syns
-                ]
-            )
             if syns and tms:
                 tms = f"({tms})^5 OR ({syns})^0.7"
-                extra_info["tms_total_weight"] = 5
-                extra_info["syns"] = extra_syns
-                extra_info["syns_total_weight"] = 0.7
 
             qs.append(tms)
 
@@ -293,4 +274,4 @@ class FulltextQueryer:
                 keywords.append(f"{tk}^{w}")
 
         return MatchTextExpr(self.query_fields, " ".join(keywords), 100,
-                             {"minimum_should_match": min(3, len(keywords) / 10)})
+                             {"minimum_should_match": min(3, len(keywords) // 10)})

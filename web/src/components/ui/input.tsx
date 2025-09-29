@@ -4,18 +4,21 @@ import { cn } from '@/lib/utils';
 import { Search } from 'lucide-react';
 
 export interface InputProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {}
+  extends React.InputHTMLAttributes<HTMLInputElement> {
+  value?: string | number | readonly string[] | undefined;
+}
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, type, ...props }, ref) => {
+  ({ className, type, value, ...props }, ref) => {
     return (
       <input
         type={type}
         className={cn(
-          'flex h-8 w-full rounded-md border border-input bg-colors-background-inverse-weak px-2 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+          'flex h-8 w-full rounded-md border border-input bg-bg-card px-2 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
           className,
         )}
         ref={ref}
+        value={value ?? ''}
         {...props}
       />
     );
@@ -67,4 +70,65 @@ const SearchInput = (props: InputProps) => {
   );
 };
 
+type Value = string | readonly string[] | number | undefined;
+
+export const InnerBlurInput = React.forwardRef<
+  HTMLInputElement,
+  InputProps & { value: Value; onChange(value: Value): void }
+>(({ value, onChange, ...props }, ref) => {
+  const [val, setVal] = React.useState<Value>();
+
+  const handleChange: React.ChangeEventHandler<HTMLInputElement> =
+    React.useCallback((e) => {
+      setVal(e.target.value);
+    }, []);
+
+  const handleBlur: React.FocusEventHandler<HTMLInputElement> =
+    React.useCallback(
+      (e) => {
+        onChange?.(e.target.value);
+      },
+      [onChange],
+    );
+
+  React.useEffect(() => {
+    setVal(value);
+  }, [value]);
+
+  return (
+    <Input
+      {...props}
+      value={val}
+      onBlur={handleBlur}
+      onChange={handleChange}
+      ref={ref}
+    ></Input>
+  );
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  InnerBlurInput.whyDidYouRender = true;
+}
+
+export const BlurInput = React.memo(InnerBlurInput);
+
 export { ExpandedInput, Input, SearchInput };
+
+type NumberInputProps = { onChange?(value: number): void } & InputProps;
+
+export const NumberInput = React.forwardRef<
+  HTMLInputElement,
+  NumberInputProps & { value: Value; onChange(value: Value): void }
+>(function NumberInput({ onChange, ...props }, ref) {
+  return (
+    <Input
+      type="number"
+      onChange={(ev) => {
+        const value = ev.target.value;
+        onChange?.(value === '' ? 0 : Number(value)); // convert to number
+      }}
+      {...props}
+      ref={ref}
+    ></Input>
+  );
+});

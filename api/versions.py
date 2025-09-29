@@ -17,7 +17,7 @@
 import os
 import subprocess
 
-RAGFLOW_VERSION_INFO = "v0.19.0"
+RAGFLOW_VERSION_INFO = "unknown"
 
 
 def get_ragflow_version() -> str:

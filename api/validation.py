@@ -38,7 +38,6 @@ def download_nltk_data():
     import nltk
     nltk.download('wordnet', halt_on_error=False, quiet=True)
     nltk.download('punkt_tab', halt_on_error=False, quiet=True)
-    nltk.download('stopwords', halt_on_error=False, quiet=True)
 
 
 try:

@@ -1,4 +1,3 @@
-//modify by zwb
 import { useTranslate } from '@/hooks/common-hooks';
 import { DownOutlined, GithubOutlined } from '@ant-design/icons';
 import { Dropdown, MenuProps, Space } from 'antd';
@@ -7,7 +6,7 @@ import React, { useCallback, useMemo } from 'react';
 import User from '../user';
 
 import { useTheme } from '@/components/theme-provider';
-import { LanguageList, LanguageMap } from '@/constants/common';
+import { LanguageList, LanguageMap, ThemeEnum } from '@/constants/common';
 import { useChangeLanguage } from '@/hooks/logic-hooks';
 import { useFetchUserInfo, useListTenant } from '@/hooks/user-setting-hooks';
 import { TenantRole } from '@/pages/user-setting/constants';
@@ -24,14 +23,11 @@ const Circle = ({ children, ...restProps }: React.PropsWithChildren) => {
 };
 
 const handleGithubCLick = () => {
-  window.open('https://github.com/zhengwanbo/ConvergedRAG/tree/main', 'target');
+  window.open('https://github.com/infiniflow/ragflow', 'target');
 };
 
 const handleDocHelpCLick = () => {
-  window.open(
-    'https://docs.oracle.com/en/database/oracle/oracle-database/23/nfcoa/ai_vector_search.html',
-    'target',
-  );
+  window.open('https://ragflow.io/docs/dev/category/guides', 'target');
 };
 
 const RightToolBar = () => {
@@ -62,10 +58,10 @@ const RightToolBar = () => {
   }, []);
 
   const onMoonClick = React.useCallback(() => {
-    setTheme('light');
+    setTheme(ThemeEnum.Light);
   }, [setTheme]);
   const onSunClick = React.useCallback(() => {
-    setTheme('dark');
+    setTheme(ThemeEnum.Dark);
   }, [setTheme]);
 
   const handleBellClick = useCallback(() => {

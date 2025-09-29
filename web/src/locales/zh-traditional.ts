@@ -69,7 +69,7 @@ export default {
       setting: '用戶設置',
       logout: '登出',
       fileManager: '文件管理',
-      flow: 'Agent',
+      flow: '智能體',
       search: '搜尋',
       welcome: '歡迎來到',
     },
@@ -143,7 +143,7 @@ export default {
       toMessage: '缺少結束頁碼（不包含）',
       layoutRecognize: 'PDF解析器',
       layoutRecognizeTip:
-        '使用視覺模型進行 PDF 布局分析，以更好地識別文檔結構，找到標題、文字塊、圖像和表格的位置。若選擇 Naive 選項，則只能取得 PDF 的純文字。請注意此功能僅適用於 PDF 文檔，對其他文檔不生效。',
+        '使用視覺模型進行 PDF 布局分析，以更好地識別文檔結構，找到標題、文字塊、圖像和表格的位置。若選擇 Naive 選項，則只能取得 PDF 的純文字。請注意此功能僅適用於 PDF 文檔，對其他文檔不生效。如需更多資訊，請參閱 https://ragflow.io/docs/dev/select_pdf_parser。',
       taskPageSize: '任務頁面大小',
       taskPageSizeMessage: '請輸入您的任務頁面大小！',
       taskPageSizeTip: `如果使用佈局識別，PDF 文件將被分成連續的組。佈局分析將在組之間並行執行，以提高處理速度。“任務頁面大小”決定組的大小。頁面大小越大，將頁面之間的連續文本分割成不同塊的機會就越低。`,
@@ -160,7 +160,7 @@ export default {
       cancel: '取消',
       rerankModel: 'rerank模型',
       rerankPlaceholder: '請選擇',
-      rerankTip: `如果是空的。它使用查詢和塊的嵌入來構成矢量餘弦相似性。否則，它使用rerank評分代替矢量餘弦相似性。`,
+      rerankTip: `非必選項：若不選擇 rerank 模型，系統將默認採用關鍵詞相似度與向量餘弦相似度相結合的混合查詢方式；如果設定了 rerank 模型，則混合查詢中的向量相似度部分將被 rerank 打分替代。請注意：採用 rerank 模型會非常耗時。如需選用 rerank 模型，建議使用 SaaS 的 rerank 模型服務；如果你傾向使用本地部署的 rerank 模型，請務必確保你使用 docker-compose-gpu.yml 啟動 RAGFlow。`,
       topK: 'Top-K',
       topKTip: `與 Rerank 模型配合使用，用於設定傳給 Rerank 模型的文本塊數量。`,
       delimiter: `文字分段標識符`,
@@ -169,9 +169,9 @@ export default {
       html4excel: '表格轉HTML',
       html4excelTip: `與 General 切片方法配合使用。未開啟狀態下，表格檔案（XLSX、XLS（Excel 97-2003）會按行解析為鍵值對。開啟後，表格檔案會被解析為 HTML 表格。若原始表格超過 12 行，系統會自動按每 12 行拆分為多個 HTML 表格。欲了解更多資訊，請參閱 https://ragflow.io/docs/dev/enable_excel2html。`,
       autoKeywords: '自動關鍵字',
-      autoKeywordsTip: `自動為每個文字區塊中提取 N 個關鍵詞，以提升查詢精度。請注意：此功能採用「系統模型設定」中設定的預設聊天模型提取關鍵詞，因此也會產生更多 Token 消耗。此外，你也可以手動更新生成的關鍵詞。`,
+      autoKeywordsTip: `自動為每個文字區塊中提取 N 個關鍵詞，以提升查詢精度。請注意：此功能採用「系統模型設定」中設定的預設聊天模型提取關鍵詞，因此也會產生更多 Token 消耗。此外，你也可以手動更新生成的關鍵詞。詳情請參見 https://ragflow.io/docs/dev/autokeyword_autoquestion。`,
       autoQuestions: '自動問題',
-      autoQuestionsTip: `為了提高排名分數，請使用「系統模型設定」中定義的聊天模型，為每個知識庫區塊提取 N 個問題。 請注意：這會消耗額外的 token。 結果可在區塊列表中查看和編輯。 問題提取錯誤不會阻止分塊過程； 空結果將被添加到原始區塊。 `,
+      autoQuestionsTip: `為了提高排名分數，請使用「系統模型設定」中定義的聊天模型，為每個知識庫區塊提取 N 個問題。 請注意：這會消耗額外的 token。 結果可在區塊列表中查看和編輯。 問題提取錯誤不會阻止分塊過程； 空結果將被添加到原始區塊。詳情請參見 https://ragflow.io/docs/dev/autokeyword_autoquestion。 `,
       redo: '是否清空已有 {{chunkNum}}個 chunk？',
       setMetaData: '設定元數據',
       pleaseInputJson: '請輸入JSON',
@@ -205,6 +205,7 @@ export default {
       titleDescription: '在這裡更新您的知識庫詳細信息，尤其是切片方法。',
       name: '知識庫名稱',
       photo: '知識庫圖片',
+      photoTip: '你可以上傳4MB的文件',
       description: '描述',
       language: '文件語言',
       languageMessage: '請輸入語言',
@@ -231,7 +232,7 @@ export default {
       cancel: '取消',
       methodTitle: '分塊方法說明',
       methodExamples: '示例',
-      methodExamplesDescription: '提出以下屏幕截圖以促進理解。',
+      methodExamplesDescription: '為方便您理解，我們附上相關截圖供您參考。',
       dialogueExamplesTitle: '對話示例',
       methodEmpty: '這將顯示知識庫類別的可視化解釋',
       book: `<p>支持的文件格式為<b>DOCX</b>、<b>PDF</b>、<b>TXT</b>。</p><p>
@@ -246,7 +247,7 @@ export default {
         我們假設手冊具有分層部分結構。我們使用最低的部分標題作為對文檔進行切片的樞軸。
         因此，同一部分中的圖和表不會被分割，並且塊大小可能會很大。
         </p>`,
-      naive: `<p>支持的文件格式為<b>DOCX、XLSX、XLS (Excel 97-2003)、PPT、PDF、TXT、JPEG、JPG、PNG、TIF、GIF、CSV、JSON、EML、HTML</b>。</p>
+      naive: `<p>支持的文件格式為<b>MD、MDX、DOCX、XLSX、XLS (Excel 97-2003)、PPT、PDF、TXT、JPEG、JPG、PNG、TIF、GIF、CSV、JSON、EML、HTML</b>。</p>
         <p>此方法將簡單的方法應用於塊文件：</p>
         <p>
         <li>系統將使用視覺檢測模型將連續文本分割成多個片段。</li>
@@ -308,7 +309,7 @@ export default {
 
 <p>請注意您需要指定的條目類型。</p>`,
       tag: `<p>使用「Tag」分塊方法的知識庫用作標籤集。其他知識庫可以使用它來標記自己的塊，對這些知識庫的查詢也將使用此標籤集進行標記。</p>
-<p>使用「Tag」作為分塊方法的知識庫<b>不</b>參與 RAG 過程。</p>
+<p>標籤集<b>不會</b>直接參與 RAG 過程。</p>
 <p>標籤知識庫中的每個塊都是一個獨立的描述-標籤對。</p>
 
 <p>支援的檔案格式包括<b>XLSX</b>和<b>CSV/TXT</b>檔案格式。</p>
@@ -395,6 +396,11 @@ export default {
       mind: '心智圖',
       question: '問題',
       questionTip: `如果存在給定的問題，則區塊的嵌入將基於它們。`,
+      chunkResult: '切片結果',
+      chunkResultTip: `查看用於嵌入和召回的切片段落`,
+      enable: '啟用',
+      disable: '禁用',
+      delete: '删除',
     },
     chat: {
       newConversation: '新會話',
@@ -448,6 +454,7 @@ export default {
       improvise: '即興創作',
       precise: '精確',
       balance: '平衡',
+      custom: '自定義',
       freedomTip: `“精確”意味著法學碩士會保守並謹慎地回答你的問題。“即興發揮”意味著你希望法學碩士能夠自由地暢所欲言。“平衡”是謹慎與自由之間的平衡。`,
       temperature: '溫度',
       temperatureMessage: '溫度是必填項',
@@ -521,7 +528,7 @@ export default {
       useKnowledgeGraph提示:
         '它將檢索相關實體、關係和社區報告的描述，這將增強多跳和複雜問題的推理。',
       keyword: '關鍵字分析',
-      keywordTip: `應用LLM分析使用者的問題，提取在相關性計算中需要強調的關鍵字。`,
+      keywordTip: `應用LLM分析使用者的問題，提取在相關性計算中需要強調的關鍵字。對於長查詢效果良好，但會增加回應時間。`,
       reasoning: '推理',
       reasoningTip:
         '在問答過程中是否啟用推理工作流程，例如Deepseek-R1或OpenAI o1等模型所採用的方式。啟用後，該功能允許模型存取外部知識，並借助思維鏈推理等技術逐步解決複雜問題。通過將問題分解為可處理的步驟，這種方法增強了模型提供準確回答的能力，從而在需要邏輯推理和多步思考的任務上表現更優。',
@@ -534,6 +541,8 @@ export default {
     },
     setting: {
       profile: '概述',
+      avatar: '头像',
+      avatarTip: '這會在你的個人主頁展示',
       profileDescription: '在此更新您的照片和個人詳細信息。',
       maxTokens: '最大token數',
       maxTokensMessage: '最大token數是必填項',
@@ -566,6 +575,7 @@ export default {
       currentPassword: '當前密碼',
       currentPasswordMessage: '請輸入當前密碼',
       newPassword: '新密碼',
+      changePassword: '修改密碼',
       newPasswordMessage: '請輸入新密碼',
       newPasswordDescription: '您的新密碼必須超過 8 個字符。',
       confirmPassword: '確認新密碼',
@@ -579,6 +589,7 @@ export default {
       apiKeyMessage: '請輸入api key（如果是本地部署的模型，請忽略它）',
       apiKeyTip: 'API key可以通過註冊相應的LLM供應商來獲取。',
       showMoreModels: '展示更多模型',
+      hideModels: '隱藏模型',
       baseUrl: 'base-url',
       baseUrlTip:
         '如果您的 API 密鑰來自 OpenAI，請忽略它。任何其他中間提供商都會提供帶有 API 密鑰的基本 URL。',
@@ -670,7 +681,7 @@ export default {
         '請輸入 Google Cloud Service Account Key in base64 format',
       addGoogleRegion: 'Google Cloud 區域',
       GoogleRegionMessage: '請輸入 Google Cloud 區域',
-      modelProvidersWarn: `請先在<b>設定>模型提供者</b>中新增嵌入模型和LLM。然後，在「系統模型設定」中設定它們。`,
+      modelProvidersWarn: `請先在<b>設定>模型提供者</b>中新增嵌入模型和LLM。然後，在「設定預設模型」中設定它們。`,
       add: '添加',
       updateDate: '更新日期',
       role: '角色',
@@ -753,6 +764,23 @@ export default {
       destinationFolder: '目標資料夾',
     },
     flow: {
+      line: '單行文本',
+      paragraph: '段落文字',
+      options: '選項',
+      file: '文件',
+      integer: '數字',
+      boolean: '布爾值',
+      multimodalModels: '多模態模型',
+      textOnlyModels: '進文本模型',
+      allModels: '所有模型',
+      codeExecDescription: '用 Python 或者 Javascript 編寫自定義邏輯',
+      stringTransformDescription:
+        '修改文本内容，目前支持文本分割、文本拼接操作',
+      foundation: '基礎',
+      tools: '工具',
+      dataManipulation: '數據操控',
+      flow: '流程',
+      dialog: '對話',
       cite: '引用',
       citeTip: 'citeTip',
       name: '名稱',
@@ -761,7 +789,8 @@ export default {
       examples: '範例',
       to: '下一步',
       msg: '訊息',
-      messagePlaceholder: '訊息',
+      msgTip: '輸出上游組件的變數內容或自行輸入的文字。',
+      messagePlaceholder: '請輸入您的訊息內容，使用‘/’快速插入變數。',
       messageMsg: '請輸入訊息或刪除此欄位。',
       addField: '新增字段',
       addMessage: '新增訊息',
@@ -786,14 +815,14 @@ export default {
       relevantDescription: `此元件用來判斷upstream的輸出是否與使用者最新的問題相關，『是』代表相關，『否』代表不相關。`,
       rewriteQuestionDescription: `此元件用於細化使用者的提問。通常，當使用者的原始提問無法從知識庫中檢索相關資訊時，此元件可協助您將問題變更為更符合知識庫表達方式的適當問題。`,
       messageDescription:
-        '此元件用於向使用者發送靜態訊息。您可以準備幾條訊息，這些訊息將隨機選擇。',
+        '此元件用來傳回工作流程最後產生的資料內容和原先設定的文字內容。',
       keywordDescription: `該組件用於從用戶的問題中提取關鍵字。 Top N指定需要提取的關鍵字數量。`,
       switchDescription: `該組件用於根據前面組件的輸出評估條件，並相應地引導執行流程。通過定義各種情況並指定操作，或在不滿足條件時採取默認操作，實現複雜的分支邏輯。`,
       wikipediaDescription: `此元件用於從 https://www.wikipedia.org/ 取得搜尋結果。通常，它作為知識庫的補充。 Top N 指定您需要調整的搜尋結果數。`,
       promptText: `請總結以下段落。注意數字，不要胡編亂造。段落如下：
 {input}
 以上就是你需要總結的內容。`,
-      createGraph: '建立 Agent',
+      createGraph: '創建智能體',
       createFromTemplates: '從模板創建',
       retrieval: '知識檢索',
       generate: '生成回答',
@@ -1006,7 +1035,7 @@ export default {
       },
       operator: '操作符',
       value: '值',
-      useTemplate: '使用該模板',
+      useTemplate: '使用',
       wenCai: '問財',
       queryType: '查詢類型',
       wenCaiDescription:
@@ -1162,6 +1191,9 @@ export default {
       codeDescription: '它允許開發人員編寫自訂 Python 邏輯。',
       inputVariables: '輸入變數',
       runningHintText: '正在運行...🕞',
+      openingSwitchTip: '您的用戶將在開始時看到此歡迎訊息。',
+      modeTip: '模式定義工作流程如何啟動。 ',
+      beginInputTip: `透過定義輸入參數，這些內容可以在後續流程中被其他元件存取。`,
     },
     footer: {
       profile: '“保留所有權利 @ react”',
@@ -1170,6 +1202,20 @@ export default {
       file: '文件',
       knowledge: '知識',
       chat: '聊天',
+    },
+    modal: {
+      okText: '確認',
+      cancelText: '取消',
+    },
+    search: {
+      createSearch: '新建查詢',
+      searchGreeting: '今天我能為你做些什麽？',
+      profile: '隱藏個人資料',
+      locale: '語言',
+      embedCode: '嵌入代碼',
+      id: 'ID',
+      copySuccess: '複製成功',
+      welcomeBack: '歡迎回來',
     },
   },
 };
