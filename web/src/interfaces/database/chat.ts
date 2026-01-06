@@ -1,4 +1,5 @@
 import { MessageType } from '@/constants/chat';
+import { IAttachment } from '@/hooks/use-send-message';
 
 export interface PromptConfig {
   empty_response: string;
@@ -10,6 +11,8 @@ export interface PromptConfig {
   keyword: boolean;
   refine_multiturn: boolean;
   use_kg: boolean;
+  reasoning?: boolean;
+  cross_languages?: Array<string>;
 }
 
 export interface Parameter {
@@ -95,6 +98,7 @@ export interface Message {
   data?: any;
   files?: File[];
   chatBoxId?: string;
+  attachment?: IAttachment;
 }
 
 export interface IReferenceChunk {
@@ -124,6 +128,7 @@ export interface IReferenceObject {
 
 export interface IAnswer {
   answer: string;
+  attachment?: IAttachment;
   reference?: IReference;
   conversationId?: string;
   prompt?: string;

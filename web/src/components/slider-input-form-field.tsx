@@ -1,6 +1,6 @@
 import { FormLayout } from '@/constants/form';
 import { cn } from '@/lib/utils';
-import { ReactNode } from 'react';
+import { ReactNode, useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { SingleFormSlider } from './ui/dual-range-slider';
 import {
@@ -36,11 +36,11 @@ export function SliderInputFormField({
   tooltip,
   defaultValue,
   className,
-  layout = FormLayout.Vertical,
+  layout = FormLayout.Horizontal,
 }: SliderInputFormFieldProps) {
   const form = useFormContext();
 
-  const isHorizontal = layout === FormLayout.Horizontal;
+  const isHorizontal = useMemo(() => layout !== FormLayout.Vertical, [layout]);
 
   return (
     <FormField
@@ -54,8 +54,7 @@ export function SliderInputFormField({
           <FormLabel
             tooltip={tooltip}
             className={cn({
-              'text-sm text-muted-foreground whitespace-break-spaces w-1/4':
-                isHorizontal,
+              'text-sm whitespace-break-spaces w-1/4': isHorizontal,
             })}
           >
             {label}
@@ -80,7 +79,10 @@ export function SliderInputFormField({
             </FormControl>
             <FormControl>
               <NumberInput
-                className="h-7 w-20"
+                className={cn(
+                  'h-6 w-10 p-0 text-center bg-bg-input border border-border-default text-text-secondary',
+                  '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+                )}
                 max={max}
                 min={min}
                 step={step}

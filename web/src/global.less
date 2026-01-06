@@ -20,6 +20,10 @@ body {
   width: 100%;
 }
 
+.vue-office-excel {
+  height: 100%;
+}
+
 /* Scroll bar stylings */
 ::-webkit-scrollbar {
   width: 10px;
@@ -28,16 +32,51 @@ body {
 
 /* Track */
 ::-webkit-scrollbar-track {
-  background: rgb(219, 218, 218);
+  background: var(--bg-card, rgba(255, 255, 255, 0.05));
 }
 
 /* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #aaaaaa;
+  background: var(--text-secondary, #b2b5b7);
   border-radius: 5px;
 }
 
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #888;
+  background: var(--text-primary, #f6f6f7);
+}
+
+/* Ant Design Sider (sidebar) */
+.ant-layout-sider {
+  background: var(--bg-base, #161618) !important;
+}
+
+/* Ant Design Sider trigger (collapse arrow) */
+.ant-layout-sider-trigger {
+  background: var(--bg-base, #161618) !important;
+  border-top: 1px solid var(--border-default, rgba(255, 255, 255, 0.2)) !important;
+  color: var(--text-primary, #f6f6f7) !important;
+}
+
+/* Ant Design Menu in sidebar */
+.ant-menu {
+  background: var(--bg-base, #161618) !important;
+}
+
+.ant-menu-submenu > .ant-menu {
+  background: var(--bg-base, #161618) !important;
+}
+
+.ant-menu-item, .ant-menu-submenu-title {
+  color: var(--text-primary, #f6f6f7) !important;
+}
+
+.ant-menu-item-selected {
+  background-color: var(--bg-card, rgba(255, 255, 255, 0.05)) !important;
+  color: var(--text-primary, #f6f6f7) !important;
+}
+
+.ant-menu-item:hover, .ant-menu-submenu-title:hover {
+  background-color: var(--bg-card, rgba(255, 255, 255, 0.05)) !important;
+  color: var(--text-primary, #f6f6f7) !important;
 }

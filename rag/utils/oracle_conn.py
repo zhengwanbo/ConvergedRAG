@@ -8,11 +8,11 @@ from typing import Any, List, Dict
 
 from numpy import array
 
-from rag import settings
-from rag.settings import TAG_FLD, PAGERANK_FLD
-from rag.utils import singleton
+from common import settings
+from common.constants import PAGERANK_FLD, TAG_FLD
+from common.decorator import singleton
 from rag.nlp import is_english, rag_tokenizer
-from api.utils.file_utils import get_project_base_directory
+from common.file_utils import get_project_base_directory
 from rag.utils.doc_store_conn import (
     DocStoreConnection,
     MatchExpr,
@@ -88,7 +88,12 @@ def equivalent_condition_to_str(condition: dict, table_instance=None) -> str:
 class OracleConnection(DocStoreConnection):
     def __init__(self):
         self.info = {}
-        logger.info(f"Use Oracle 23ai {settings.ORACLE['host']} as the doc engine.")
+        # 确保 settings.ORACLE 已初始化
+        if not hasattr(settings, 'ORACLE') or not settings.ORACLE:
+            from common import settings as common_settings
+            common_settings.init_settings()
+        
+        logger.info(f"Use Oracle 23ai {settings.ORACLE.get('host', 'localhost')} as the doc engine.")
         self.db_name = "freepdb1"
         self.conn_pool = None
         self._init_connection_pool()
@@ -96,10 +101,19 @@ class OracleConnection(DocStoreConnection):
     def _init_connection_pool(self):
         """初始化Oracle连接池"""
         try:
+            # 确保 settings.ORACLE 已初始化
+            if not hasattr(settings, 'ORACLE') or not settings.ORACLE:
+                from common import settings as common_settings
+                common_settings.init_settings()
+            
             self.conn_pool = oracledb.create_pool(
-                user=settings.ORACLE["user"],
-                password=settings.ORACLE["password"],
-                dsn="{}:{}/{}".format(settings.ORACLE["host"], settings.ORACLE["port"], settings.ORACLE["db"]),
+                user=settings.ORACLE.get("user", "conrag"),
+                password=settings.ORACLE.get("password", "conrag"),
+                dsn="{}:{}/{}".format(
+                    settings.ORACLE.get("host", "localhost"),
+                    settings.ORACLE.get("port", 1521),
+                    settings.ORACLE.get("db", "freepdb1")
+                ),
                 min=1,
                 max=10,
                 increment=1
@@ -616,7 +630,7 @@ class OracleConnection(DocStoreConnection):
             condition: Dict[str, Any],
             indexName: str,
             knowledgebaseId: str
-    ) -> bool:
+    ) -> int:
         """删除文档"""
         try:
             table_name = f"{indexName}_{knowledgebaseId}"
@@ -637,10 +651,10 @@ class OracleConnection(DocStoreConnection):
                 logger.debug(f"Oracle delete sql: {delete_sql}")
                 cursor.execute(delete_sql)
                 conn.commit()
-                return True
+                return cursor.rowcount
         except Exception as e:
             logger.error(f"Failed to delete from table {table_name}: {str(e)}")
-            return False
+            return 0
         
     def sql(self, sql: str, fetch_size: int, format: str = "json"):
         """执行SQL查询"""
@@ -695,7 +709,7 @@ class OracleConnection(DocStoreConnection):
             logger.error(f"Failed to execute SQL in Oracle: {str(e)}")
             return None
     
-    def getTotal(self, res: tuple[list[dict], int] | list[dict]) -> int:
+    def get_total(self, res: tuple[list[dict], int] | list[dict]) -> int:
         """
         获取结果总数
         Args:
@@ -707,7 +721,7 @@ class OracleConnection(DocStoreConnection):
             return res[1]
         return len(res)
 
-    def getChunkIds(self, res: tuple[list[dict], int] | list[dict]) -> list[str]:
+    def get_chunk_ids(self, res: tuple[list[dict], int] | list[dict]) -> list[str]:
         """
         获取所有chunk的ID列表
         Args:
@@ -719,7 +733,7 @@ class OracleConnection(DocStoreConnection):
             res = res[0]
         return [row["id"] for row in res]
 
-    def getFields(self, res: tuple[list[dict], int] | list[dict], fields: list[str]) -> dict[str, dict]:
+    def get_fields(self, res: tuple[list[dict], int] | list[dict], fields: list[str]) -> dict[str, dict]:
         """
         获取指定字段的值
         Args:
@@ -768,7 +782,7 @@ class OracleConnection(DocStoreConnection):
             
         return res_fields
     
-    def getHighlight(self, res: tuple[list[dict], int] | list[dict], keywords: list[str], fieldnm: str) -> dict[str, str]:
+    def get_highlight(self, res: tuple[list[dict], int] | list[dict], keywords: list[str], fieldnm: str) -> dict[str, str]:
         """
         获取高亮结果
         Args:
@@ -817,16 +831,54 @@ class OracleConnection(DocStoreConnection):
             
         return ans
 
-    def getAggregation(self, res: tuple[list[dict], int] | list[dict], fieldnm: str) -> list:
+    def get_aggregation(self, res: tuple[list[dict], int] | list[dict], fieldnm: str) -> list:
         """
-        获取聚合结果（暂未实现）
+        获取聚合结果
         Args:
             res: 查询结果，可以是元组（结果列表，总数）或结果列表
             fieldnm: 需要聚合的字段名
         Returns:
-            空列表（功能未实现）
+            聚合结果列表，每个元素为 [tag, count] 格式
         """
-        return list()
+        from collections import Counter
+        
+        # 提取结果列表
+        if isinstance(res, tuple):
+            results = res[0]
+        else:
+            results = res
+            
+        if not results or fieldnm not in results[0]:
+            return []
+            
+        # 聚合标签计数
+        tag_counter = Counter()
+        
+        for row in results:
+            value = row.get(fieldnm)
+            if value is None or not value:
+                continue
+                
+            # 处理不同的标签格式
+            if isinstance(value, str):
+                # 对于 tag_kwd 字段，使用 ### 分割
+                if fieldnm == "tag_kwd" and "###" in value:
+                    tags = [tag.strip() for tag in value.split("###") if tag.strip()]
+                else:
+                    # 尝试逗号分割作为备选
+                    tags = [tag.strip() for tag in value.split(",") if tag.strip()]
+                    
+                for tag in tags:
+                    if tag:  # 只计数非空标签
+                        tag_counter[tag] += 1
+            elif isinstance(value, list):
+                # 处理列表格式
+                for tag in value:
+                    if tag and isinstance(tag, str):
+                        tag_counter[tag.strip()] += 1
+                        
+        # 返回 [tag, count] 对列表，按计数降序排序
+        return [[tag, count] for tag, count in tag_counter.most_common()]
 
     def close(self):
         """关闭连接池"""

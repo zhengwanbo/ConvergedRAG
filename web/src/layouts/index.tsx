@@ -1,8 +1,9 @@
-import { Divider, Layout, theme } from 'antd';
-import React from 'react';
+import { Layout, theme } from 'antd';
+import React, { useState } from 'react';
 import { Outlet } from 'umi';
 import '../locales/config';
-import Header from './components/header';
+import Sidebar from './components/sidebar';
+import { Header } from './next-header';
 
 import styles from './index.less';
 
@@ -12,23 +13,38 @@ const App: React.FC = () => {
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const handleSidebarCollapse = (collapsed: boolean) => {
+    setSidebarCollapsed(collapsed);
+  };
+
+  const sidebarWidth = sidebarCollapsed ? 80 : 240;
+  const contentMarginLeft = sidebarCollapsed ? 80 : 240;
 
   return (
-    <Layout className={styles.layout}>
+    <Layout style={{ minHeight: '100vh', paddingTop: '61px' }}>
+      <Header />
       <Layout>
-        <Header></Header>
-        <Divider orientationMargin={0} className={styles.divider} />
-        <Content
-          style={{
-            minHeight: 280,
-            background: colorBgContainer,
-            borderRadius: borderRadiusLG,
-            overflow: 'auto',
-            display: 'flex',
-          }}
-        >
-          <Outlet />
-        </Content>
+        <Sidebar onCollapseChange={handleSidebarCollapse} />
+        <Layout style={{ marginLeft: contentMarginLeft, transition: 'margin-left 0.2s' }}>
+          <Content
+            style={{
+              minHeight: 'calc(100vh - 60px)',
+              background: colorBgContainer,
+              borderRadius: borderRadiusLG,
+              overflow: 'auto',
+              padding: '24px',
+              margin: '8px',
+              marginTop: '0',
+              width: '100%',
+              boxSizing: 'border-box',
+              transition: 'all 0.2s',
+            }}
+          >
+            <Outlet />
+          </Content>
+        </Layout>
       </Layout>
     </Layout>
   );

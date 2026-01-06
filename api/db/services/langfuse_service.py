@@ -20,7 +20,7 @@ import peewee
 
 from api.db.db_models import DB, TenantLangfuse
 from api.db.services.common_service import CommonService
-from api.utils import current_timestamp, datetime_format
+from common.time_utils import current_timestamp, timestamp_to_date
 
 
 class TenantLangfuseService(CommonService):
@@ -52,17 +52,22 @@ class TenantLangfuseService(CommonService):
             return None
 
     @classmethod
+    @DB.connection_context()
+    def delete_ty_tenant_id(cls, tenant_id):
+        return cls.model.delete().where(cls.model.tenant_id == tenant_id).execute()
+
+    @classmethod
     def update_by_tenant(cls, tenant_id, langfuse_keys):
         langfuse_keys["update_time"] = current_timestamp()
-        langfuse_keys["update_date"] = datetime_format(datetime.now())
+        langfuse_keys["update_date"] = timestamp_to_date(current_timestamp())
         return cls.model.update(**langfuse_keys).where(cls.model.tenant_id == tenant_id).execute()
 
     @classmethod
     def save(cls, **kwargs):
         kwargs["create_time"] = current_timestamp()
-        kwargs["create_date"] = datetime_format(datetime.now())
+        kwargs["create_date"] = timestamp_to_date(current_timestamp())
         kwargs["update_time"] = current_timestamp()
-        kwargs["update_date"] = datetime_format(datetime.now())
+        kwargs["update_date"] = timestamp_to_date(current_timestamp())
         obj = cls.model.create(**kwargs)
         return obj
 

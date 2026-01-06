@@ -143,7 +143,6 @@ Non-stream:
 }
 ```
 
-
 Failure:
 
 ```json
@@ -200,19 +199,24 @@ curl --request POST \
 - `stream` (*Body parameter*) `boolean`  
   Whether to receive the response as a stream. Set this to `false` explicitly if you prefer to receive the entire response in one go instead of as a stream.
 
+- `session_id` (*Body parameter*) `string`  
+  Agent session id.
+
 #### Response
 
 Stream:
 
 ```json
+...
+
 data: {
-    "id": "5fa65c94-e316-4954-800a-06dfd5827052",
+    "id": "c39f6f9c83d911f0858253708ecb6573",
     "object": "chat.completion.chunk",
-    "model": "99ee29d6783511f09c921a6272e682d8",
+    "model": "d1f79142831f11f09cc51795b9eb07c0",
     "choices": [
         {
             "delta": {
-                "content": "Hello"
+                "content": " terminal"
             },
             "finish_reason": null,
             "index": 0
@@ -220,21 +224,83 @@ data: {
     ]
 }
 
-data: {"id": "518022d9-545b-4100-89ed-ecd9e46fa753", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": "!"}, "finish_reason": null, "index": 0}]}
+data: {
+    "id": "c39f6f9c83d911f0858253708ecb6573",
+    "object": "chat.completion.chunk",
+    "model": "d1f79142831f11f09cc51795b9eb07c0",
+    "choices": [
+        {
+            "delta": {
+                "content": "."
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ]
+}
 
-data: {"id": "f37c4af0-8187-4c86-8186-048c3c6ffe4e", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": " How"}, "finish_reason": null, "index": 0}]}
-
-data: {"id": "3ebc0fcb-0f85-4024-b4a5-3b03234a16df", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": " can"}, "finish_reason": null, "index": 0}]}
-
-data: {"id": "efa1f3cf-7bc4-47a4-8e53-cd696f290587", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": " I"}, "finish_reason": null, "index": 0}]}
-
-data: {"id": "2eb6f741-50a3-4d3d-8418-88be27895611", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": " assist"}, "finish_reason": null, "index": 0}]}
-
-data: {"id": "f1227e4f-bf8b-462c-8632-8f5269492ce9", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": " you"}, "finish_reason": null, "index": 0}]}
-
-data: {"id": "35b669d0-b2be-4c0c-88d8-17ff98592b21", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": " today"}, "finish_reason": null, "index": 0}]}
-
-data: {"id": "f00d8a39-af60-4f32-924f-d64106a7fdf1", "object": "chat.completion.chunk", "model": "99ee29d6783511f09c921a6272e682d8", "choices": [{"delta": {"content": "?"}, "finish_reason": null, "index": 0}]}
+data: {
+    "id": "c39f6f9c83d911f0858253708ecb6573",
+    "object": "chat.completion.chunk",
+    "model": "d1f79142831f11f09cc51795b9eb07c0",
+    "choices": [
+        {
+            "delta": {
+                "content": "",
+                "reference": {
+                    "chunks": {
+                        "20": {
+                            "id": "4b8935ac0a22deb1",
+                            "content": "```cd /usr/ports/editors/neovim/ && make install```## Android[Termux](https://github.com/termux/termux-app) offers a Neovim package.",
+                            "document_id": "4bdd2ff65e1511f0907f09f583941b45",
+                            "document_name": "INSTALL22.md",
+                            "dataset_id": "456ce60c5e1511f0907f09f583941b45",
+                            "image_id": "",
+                            "positions": [
+                                [
+                                    12,
+                                    11,
+                                    11,
+                                    11,
+                                    11
+                                ]
+                            ],
+                            "url": null,
+                            "similarity": 0.5697155305154673,
+                            "vector_similarity": 0.7323851005515574,
+                            "term_similarity": 0.5000000005,
+                            "doc_type": ""
+                        }
+                    },
+                    "doc_aggs": {
+                        "INSTALL22.md": {
+                            "doc_name": "INSTALL22.md",
+                            "doc_id": "4bdd2ff65e1511f0907f09f583941b45",
+                            "count": 3
+                        },
+                        "INSTALL.md": {
+                            "doc_name": "INSTALL.md",
+                            "doc_id": "4bd7fdd85e1511f0907f09f583941b45",
+                            "count": 2
+                        },
+                        "INSTALL(1).md": {
+                            "doc_name": "INSTALL(1).md",
+                            "doc_id": "4bdfb42e5e1511f0907f09f583941b45",
+                            "count": 2
+                        },
+                        "INSTALL3.md": {
+                            "doc_name": "INSTALL3.md",
+                            "doc_id": "4bdab5825e1511f0907f09f583941b45",
+                            "count": 1
+                        }
+                    }
+                }
+            },
+            "finish_reason": null,
+            "index": 0
+        }
+    ]
+}
 
 data: [DONE]
 ```
@@ -249,29 +315,76 @@ Non-stream:
             "index": 0,
             "logprobs": null,
             "message": {
-                "content": "Hello! How can I assist you today?",
+                "content": "\nTo install Neovim, the process varies depending on your operating system:\n\n### For Windows:\n1. **Download from GitHub**: \n   - Visit the [Neovim releases page](https://github.com/neovim/neovim/releases)\n   - Download the latest Windows installer (nvim-win64.msi)\n   - Run the installer and follow the prompts\n\n2. **Using winget** (Windows Package Manager):\n...",
+                "reference": {
+                    "chunks": {
+                        "20": {
+                            "content": "```cd /usr/ports/editors/neovim/ && make install```## Android[Termux](https://github.com/termux/termux-app) offers a Neovim package.",
+                            "dataset_id": "456ce60c5e1511f0907f09f583941b45",
+                            "doc_type": "",
+                            "document_id": "4bdd2ff65e1511f0907f09f583941b45",
+                            "document_name": "INSTALL22.md",
+                            "id": "4b8935ac0a22deb1",
+                            "image_id": "",
+                            "positions": [
+                                [
+                                    12,
+                                    11,
+                                    11,
+                                    11,
+                                    11
+                                ]
+                            ],
+                            "similarity": 0.5697155305154673,
+                            "term_similarity": 0.5000000005,
+                            "url": null,
+                            "vector_similarity": 0.7323851005515574
+                        }
+                    },
+                    "doc_aggs": {
+                        "INSTALL(1).md": {
+                            "count": 2,
+                            "doc_id": "4bdfb42e5e1511f0907f09f583941b45",
+                            "doc_name": "INSTALL(1).md"
+                        },
+                        "INSTALL.md": {
+                            "count": 2,
+                            "doc_id": "4bd7fdd85e1511f0907f09f583941b45",
+                            "doc_name": "INSTALL.md"
+                        },
+                        "INSTALL22.md": {
+                            "count": 3,
+                            "doc_id": "4bdd2ff65e1511f0907f09f583941b45",
+                            "doc_name": "INSTALL22.md"
+                        },
+                        "INSTALL3.md": {
+                            "count": 1,
+                            "doc_id": "4bdab5825e1511f0907f09f583941b45",
+                            "doc_name": "INSTALL3.md"
+                        }
+                    }
+                },
                 "role": "assistant"
             }
         }
     ],
     "created": null,
-    "id": "17aa4ec5-6d36-40c6-9a96-1b069c216d59",
-    "model": "99ee29d6783511f09c921a6272e682d8",
+    "id": "c39f6f9c83d911f0858253708ecb6573",
+    "model": "d1f79142831f11f09cc51795b9eb07c0",
     "object": "chat.completion",
     "param": null,
     "usage": {
-        "completion_tokens": 9,
+        "completion_tokens": 415,
         "completion_tokens_details": {
             "accepted_prediction_tokens": 0,
             "reasoning_tokens": 0,
             "rejected_prediction_tokens": 0
         },
-        "prompt_tokens": 1,
-        "total_tokens": 10
+        "prompt_tokens": 6,
+        "total_tokens": 421
     }
 }
 ```
-
 
 Failure:
 
@@ -717,7 +830,8 @@ Success:
             "update_time": 1728533243536,
             "vector_similarity_weight": 0.3
         }
-    ]
+    ],
+    "total": 1
 }
 ```
 
@@ -729,6 +843,7 @@ Failure:
     "message": "The dataset doesn't exist"
 }
 ```
+
  ---
 
 ### Get knowledge graph
@@ -808,6 +923,7 @@ Failure:
     "message": "The dataset doesn't exist"
 }
 ```
+
 ---
 
 ### Delete knowledge graph
@@ -855,6 +971,238 @@ Failure:
     "message": "The dataset doesn't exist"
 }
 ```
+
+---
+
+### Construct knowledge graph
+
+**POST** `/api/v1/datasets/{dataset_id}/run_graphrag`
+
+Constructs a knowledge graph from a specified dataset.
+
+#### Request
+
+- Method: POST
+- URL: `/api/v1/datasets/{dataset_id}/run_graphrag`
+- Headers:
+  - `'Authorization: Bearer <YOUR_API_KEY>'`
+
+##### Request example
+
+```bash
+curl --request POST \
+     --url http://{address}/api/v1/datasets/{dataset_id}/run_graphrag \
+     --header 'Authorization: Bearer <YOUR_API_KEY>'
+```
+
+##### Request parameters
+
+- `dataset_id`: (*Path parameter*)  
+  The ID of the target dataset.
+
+#### Response
+
+Success:
+
+```json
+{
+    "code":0,
+    "data":{
+      "graphrag_task_id":"e498de54bfbb11f0ba028f704583b57b"
+    }
+}
+```
+
+Failure:
+
+```json
+{
+    "code": 102,
+    "message": "Invalid Dataset ID"
+}
+```
+
+---
+
+### Get knowledge graph construction status
+
+**GET** `/api/v1/datasets/{dataset_id}/trace_graphrag`
+
+Retrieves the knowledge graph construction status for a specified dataset.
+
+#### Request
+
+- Method: GET
+- URL: `/api/v1/datasets/{dataset_id}/trace_graphrag`
+- Headers:
+  - `'Authorization: Bearer <YOUR_API_KEY>'`
+
+##### Request example
+
+```bash
+curl --request GET \
+     --url http://{address}/api/v1/datasets/{dataset_id}/trace_graphrag \
+     --header 'Authorization: Bearer <YOUR_API_KEY>'
+```
+
+##### Request parameters
+
+- `dataset_id`: (*Path parameter*)  
+  The ID of the target dataset.
+
+#### Response
+
+Success:
+
+```json
+{
+    "code":0,
+    "data":{
+        "begin_at":"Wed, 12 Nov 2025 19:36:56 GMT",
+        "chunk_ids":"",
+        "create_date":"Wed, 12 Nov 2025 19:36:56 GMT",
+        "create_time":1762947416350,
+        "digest":"39e43572e3dcd84f",
+        "doc_id":"44661c10bde211f0bc93c164a47ffc40",
+        "from_page":100000000,
+        "id":"e498de54bfbb11f0ba028f704583b57b",
+        "priority":0,
+        "process_duration":2.45419,
+        "progress":1.0,
+        "progress_msg":"19:36:56 created task graphrag\n19:36:57 Task has been received.\n19:36:58 [GraphRAG] doc:083661febe2411f0bc79456921e5745f has no available chunks, skip generation.\n19:36:58 [GraphRAG] build_subgraph doc:44661c10bde211f0bc93c164a47ffc40 start (chunks=1, timeout=10000000000s)\n19:36:58 Graph already contains 44661c10bde211f0bc93c164a47ffc40\n19:36:58 [GraphRAG] build_subgraph doc:44661c10bde211f0bc93c164a47ffc40 empty\n19:36:58 [GraphRAG] kb:33137ed0bde211f0bc93c164a47ffc40 no subgraphs generated successfully, end.\n19:36:58 Knowledge Graph done (0.72s)","retry_count":1,
+        "task_type":"graphrag",
+        "to_page":100000000,
+        "update_date":"Wed, 12 Nov 2025 19:36:58 GMT",
+        "update_time":1762947418454
+    }
+}
+```
+
+Failure:
+
+```json
+{
+    "code": 102,
+    "message": "Invalid Dataset ID"
+}
+```
+
+---
+
+### Construct RAPTOR
+
+**POST** `/api/v1/datasets/{dataset_id}/run_raptor`
+
+Construct a RAPTOR from a specified dataset.
+
+#### Request
+
+- Method: POST
+- URL: `/api/v1/datasets/{dataset_id}/run_raptor`
+- Headers:
+  - `'Authorization: Bearer <YOUR_API_KEY>'`
+
+##### Request example
+
+```bash
+curl --request POST \
+     --url http://{address}/api/v1/datasets/{dataset_id}/run_raptor \
+     --header 'Authorization: Bearer <YOUR_API_KEY>'
+```
+
+##### Request parameters
+
+- `dataset_id`: (*Path parameter*)  
+  The ID of the target dataset.
+
+#### Response
+
+Success:
+
+```json
+{
+    "code":0,
+    "data":{
+        "raptor_task_id":"50d3c31cbfbd11f0ba028f704583b57b"
+    }
+}
+```
+
+Failure:
+
+```json
+{
+    "code": 102,
+    "message": "Invalid Dataset ID"
+}
+```
+
+---
+
+### Get RAPTOR construction status
+
+**GET** `/api/v1/datasets/{dataset_id}/trace_raptor`
+
+Retrieves the RAPTOR construction status for a specified dataset.
+
+#### Request
+
+- Method: GET
+- URL: `/api/v1/datasets/{dataset_id}/trace_raptor`
+- Headers:
+  - `'Authorization: Bearer <YOUR_API_KEY>'`
+
+##### Request example
+
+```bash
+curl --request GET \
+     --url http://{address}/api/v1/datasets/{dataset_id}/trace_raptor \
+     --header 'Authorization: Bearer <YOUR_API_KEY>'
+```
+
+##### Request parameters
+
+- `dataset_id`: (*Path parameter*)  
+  The ID of the target dataset.
+
+#### Response
+
+Success:
+
+```json
+{
+    "code":0,
+    "data":{
+        "begin_at":"Wed, 12 Nov 2025 19:47:07 GMT",
+        "chunk_ids":"",
+        "create_date":"Wed, 12 Nov 2025 19:47:07 GMT",
+        "create_time":1762948027427,
+        "digest":"8b279a6248cb8fc6",
+        "doc_id":"44661c10bde211f0bc93c164a47ffc40",
+        "from_page":100000000,
+        "id":"50d3c31cbfbd11f0ba028f704583b57b",
+        "priority":0,
+        "process_duration":0.948244,
+        "progress":1.0,
+        "progress_msg":"19:47:07 created task raptor\n19:47:07 Task has been received.\n19:47:07 Processing...\n19:47:07 Processing...\n19:47:07 Indexing done (0.01s).\n19:47:07 Task done (0.29s)",
+        "retry_count":1,
+        "task_type":"raptor",
+        "to_page":100000000,
+        "update_date":"Wed, 12 Nov 2025 19:47:07 GMT",
+        "update_time":1762948027948
+    }
+}
+```
+
+Failure:
+
+```json
+{
+    "code": 102,
+    "message": "Invalid Dataset ID"
+}
+```
+
 ---
 
 ## FILE MANAGEMENT WITHIN DATASET
@@ -1007,6 +1355,10 @@ curl --request PUT \
   - If `"chunk_method"` is `"qa"`, `"manuel"`, `"paper"`, `"book"`, `"laws"`, or `"presentation"`, the `"parser_config"` object contains the following attribute:
     - `"raptor"`: RAPTOR-specific settings. Defaults to: `{"use_raptor": false}`.
   - If `"chunk_method"` is `"table"`, `"picture"`, `"one"`, or `"email"`, `"parser_config"` is an empty JSON object.
+- `"enabled"`: (*Body parameter*), `integer`  
+  Whether the document should be **available** in the knowledge base.  
+  - `1` → （available）  
+  - `0` → （unavailable）  
 
 #### Response
 
@@ -1081,23 +1433,24 @@ Failure:
 
 ### List documents
 
-**GET** `/api/v1/datasets/{dataset_id}/documents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&keywords={keywords}&id={document_id}&name={document_name}&create_time_from={timestamp}&create_time_to={timestamp}`
+**GET** `/api/v1/datasets/{dataset_id}/documents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&keywords={keywords}&id={document_id}&name={document_name}&create_time_from={timestamp}&create_time_to={timestamp}&suffix={file_suffix}&run={run_status}`
 
 Lists documents in a specified dataset.
 
 #### Request
 
 - Method: GET
-- URL: `/api/v1/datasets/{dataset_id}/documents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&keywords={keywords}&id={document_id}&name={document_name}&create_time_from={timestamp}&create_time_to={timestamp}`
+- URL: `/api/v1/datasets/{dataset_id}/documents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&keywords={keywords}&id={document_id}&name={document_name}&create_time_from={timestamp}&create_time_to={timestamp}&suffix={file_suffix}&run={run_status}`
 - Headers:
   - `'content-Type: application/json'`
   - `'Authorization: Bearer <YOUR_API_KEY>'`
 
-##### Request example
+##### Request examples
 
+**A basic request with pagination:**
 ```bash
 curl --request GET \
-     --url http://{address}/api/v1/datasets/{dataset_id}/documents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&keywords={keywords}&id={document_id}&name={document_name}&create_time_from={timestamp}&create_time_to={timestamp} \
+     --url http://{address}/api/v1/datasets/{dataset_id}/documents?page=1&page_size=10 \
      --header 'Authorization: Bearer <YOUR_API_KEY>'
 ```
 
@@ -1119,10 +1472,34 @@ curl --request GET \
   Indicates whether the retrieved documents should be sorted in descending order. Defaults to `true`.
 - `id`: (*Filter parameter*), `string`  
   The ID of the document to retrieve.
-- `create_time_from`: (*Filter parameter*), `integer`
+- `create_time_from`: (*Filter parameter*), `integer`  
   Unix timestamp for filtering documents created after this time. 0 means no filter. Defaults to `0`.
-- `create_time_to`: (*Filter parameter*), `integer`
+- `create_time_to`: (*Filter parameter*), `integer`  
   Unix timestamp for filtering documents created before this time. 0 means no filter. Defaults to `0`.
+- `suffix`: (*Filter parameter*), `array[string]`  
+  Filter by file suffix. Supports multiple values, e.g., `pdf`, `txt`, and `docx`. Defaults to all suffixes.
+- `run`: (*Filter parameter*), `array[string]`  
+  Filter by document processing status. Supports numeric, text, and mixed formats:  
+  - Numeric format: `["0", "1", "2", "3", "4"]`
+  - Text format: `[UNSTART, RUNNING, CANCEL, DONE, FAIL]`
+  - Mixed format: `[UNSTART, 1, DONE]` (mixing numeric and text formats)
+  - Status mapping:
+    - `0` / `UNSTART`: Document not yet processed
+    - `1` / `RUNNING`: Document is currently being processed
+    - `2` / `CANCEL`: Document processing was cancelled
+    - `3` / `DONE`: Document processing completed successfully
+    - `4` / `FAIL`: Document processing failed  
+  Defaults to all statuses.
+
+##### Usage examples
+
+**A request with multiple filtering parameters**
+
+```bash
+curl --request GET \
+     --url 'http://{address}/api/v1/datasets/{dataset_id}/documents?suffix=pdf&run=DONE&page=1&page_size=10' \
+     --header 'Authorization: Bearer <YOUR_API_KEY>'
+```
 
 #### Response
 
@@ -1153,7 +1530,7 @@ Success:
                 "process_duration": 0.0,
                 "progress": 0.0,
                 "progress_msg": "",
-                "run": "0",
+                "run": "UNSTART",
                 "size": 7,
                 "source_type": "local",
                 "status": "1",
@@ -1164,7 +1541,7 @@ Success:
                 "update_time": 1728897061948
             }
         ],
-        "total": 1
+        "total_datasets": 1
     }
 }
 ```
@@ -1692,8 +2069,9 @@ Retrieves chunks from specified datasets.
   - `"rerank_id"`: `string`  
   - `"keyword"`: `boolean`  
   - `"highlight"`: `boolean`
-  - `"cross_languages"`: `list[string]`  
-
+  - `"cross_languages"`: `list[string]`
+  - `"metadata_condition"`: `object`
+  - `"use_kg"`: `boolean`
 ##### Request example
 
 ```bash
@@ -1705,7 +2083,21 @@ curl --request POST \
      {
           "question": "What is advantage of ragflow?",
           "dataset_ids": ["b2a62730759d11ef987d0242ac120004"],
-          "document_ids": ["77df9ef4759a11ef8bdd0242ac120004"]
+          "document_ids": ["77df9ef4759a11ef8bdd0242ac120004"],
+          "metadata_condition": {
+            "conditions": [
+              {
+                "name": "author",
+                "comparison_operator": "=",
+                "value": "Toby"
+              },
+              {
+                "name": "url",
+                "comparison_operator": "not contains",
+                "value": "amd"
+              }
+            ]
+          }
      }'
 ```
 
@@ -1727,6 +2119,8 @@ curl --request POST \
   The weight of vector cosine similarity. Defaults to `0.3`. If x represents the weight of vector cosine similarity, then (1 - x) is the term similarity weight.
 - `"top_k"`: (*Body parameter*), `integer`  
   The number of chunks engaged in vector cosine computation. Defaults to `1024`.
+- `"use_kg"`: (*Body parameter*), `boolean`  
+  The search includes text chunks related to the knowledge graph of the selected dataset to handle complex multi-hop queries. Defaults to `False`.
 - `"rerank_id"`: (*Body parameter*), `integer`  
   The ID of the rerank model.
 - `"keyword"`: (*Body parameter*), `boolean`  
@@ -1739,6 +2133,25 @@ curl --request POST \
   - `false`: Disable highlighting of matched terms (default).
 - `"cross_languages"`: (*Body parameter*) `list[string]`  
   The languages that should be translated into, in order to achieve keywords retrievals in different languages.
+- `"metadata_condition"`: (*Body parameter*), `object`  
+  The metadata condition used for filtering chunks:  
+  - `"conditions"`: (*Body parameter*), `array`  
+    A list of metadata filter conditions.  
+    - `"name"`: `string` - The metadata field name to filter by, e.g., `"author"`, `"company"`, `"url"`. Ensure this parameter before use. See [Set metadata](../guides/dataset/set_metadata.md) for details.
+    - `comparison_operator`: `string` - The comparison operator. Can be one of: 
+      - `"contains"`
+      - `"not contains"`
+      - `"start with"`
+      - `"empty"`
+      - `"not empty"`
+      - `"="`
+      - `"≠"`
+      - `">"`
+      - `"<"`
+      - `"≥"`
+      - `"≤"`
+    - `"value"`: `string` - The value to compare.
+
 
 #### Response
 
@@ -3017,40 +3430,87 @@ success without `session_id` provided and with no variables specified in the **B
 Stream:
 
 ```json
-data:{
-    "event": "message",
-    "message_id": "eb0c0a5e783511f0b9b61a6272e682d8",
-    "created_at": 1755083342,
-    "task_id": "99ee29d6783511f09c921a6272e682d8",
-    "data": {
-        "content": "Hello"
-    },
-    "session_id": "eaf19a8e783511f0b9b61a6272e682d8"
-}
-
-data:{
-    "event": "message",
-    "message_id": "eb0c0a5e783511f0b9b61a6272e682d8",
-    "created_at": 1755083342,
-    "task_id": "99ee29d6783511f09c921a6272e682d8",
-    "data": {
-        "content": "!"
-    },
-    "session_id": "eaf19a8e783511f0b9b61a6272e682d8"
-}
-
-data:{
-    "event": "message",
-    "message_id": "eb0c0a5e783511f0b9b61a6272e682d8",
-    "created_at": 1755083342,
-    "task_id": "99ee29d6783511f09c921a6272e682d8",
-    "data": {
-        "content": " How"
-    },
-    "session_id": "eaf19a8e783511f0b9b61a6272e682d8"
-}
-
 ...
+
+data: {
+    "event": "message",
+    "message_id": "cecdcb0e83dc11f0858253708ecb6573",
+    "created_at": 1756364483,
+    "task_id": "d1f79142831f11f09cc51795b9eb07c0",
+    "data": {
+        "content": " themes"
+    },
+    "session_id": "cd097ca083dc11f0858253708ecb6573"
+}
+
+data: {
+    "event": "message",
+    "message_id": "cecdcb0e83dc11f0858253708ecb6573",
+    "created_at": 1756364483,
+    "task_id": "d1f79142831f11f09cc51795b9eb07c0",
+    "data": {
+        "content": "."
+    },
+    "session_id": "cd097ca083dc11f0858253708ecb6573"
+}
+
+data: {
+    "event": "message_end",
+    "message_id": "cecdcb0e83dc11f0858253708ecb6573",
+    "created_at": 1756364483,
+    "task_id": "d1f79142831f11f09cc51795b9eb07c0",
+    "data": {
+        "reference": {
+            "chunks": {
+                "20": {
+                    "id": "4b8935ac0a22deb1",
+                    "content": "```cd /usr/ports/editors/neovim/ && make install```## Android[Termux](https://github.com/termux/termux-app) offers a Neovim package.",
+                    "document_id": "4bdd2ff65e1511f0907f09f583941b45",
+                    "document_name": "INSTALL22.md",
+                    "dataset_id": "456ce60c5e1511f0907f09f583941b45",
+                    "image_id": "",
+                    "positions": [
+                        [
+                            12,
+                            11,
+                            11,
+                            11,
+                            11
+                        ]
+                    ],
+                    "url": null,
+                    "similarity": 0.5705525104787287,
+                    "vector_similarity": 0.7351750337624289,
+                    "term_similarity": 0.5000000005,
+                    "doc_type": ""
+                }
+            },
+            "doc_aggs": {
+                "INSTALL22.md": {
+                    "doc_name": "INSTALL22.md",
+                    "doc_id": "4bdd2ff65e1511f0907f09f583941b45",
+                    "count": 3
+                },
+                "INSTALL.md": {
+                    "doc_name": "INSTALL.md",
+                    "doc_id": "4bd7fdd85e1511f0907f09f583941b45",
+                    "count": 2
+                },
+                "INSTALL(1).md": {
+                    "doc_name": "INSTALL(1).md",
+                    "doc_id": "4bdfb42e5e1511f0907f09f583941b45",
+                    "count": 2
+                },
+                "INSTALL3.md": {
+                    "doc_name": "INSTALL3.md",
+                    "doc_id": "4bdab5825e1511f0907f09f583941b45",
+                    "count": 1
+                }
+            }
+        }
+    },
+    "session_id": "cd097ca083dc11f0858253708ecb6573"
+}
 
 data:[DONE]
 ```
@@ -3061,21 +3521,77 @@ Non-stream:
 {
     "code": 0,
     "data": {
-        "created_at": 1755083440,
+        "created_at": 1756363177,
         "data": {
-            "created_at": 547061.147866385,
-            "elapsed_time": 2.595433341921307,
-            "inputs": {},
+            "content": "\nTo install Neovim, the process varies depending on your operating system:\n\n### For macOS:\nUsing Homebrew:\n```bash\nbrew install neovim\n```\n\n### For Linux (Debian/Ubuntu):\n```bash\nsudo apt update\nsudo apt install neovim\n```\n\nFor other Linux distributions, you can use their respective package managers or build from source.\n\n### For Windows:\n1. Download the latest Windows installer from the official Neovim GitHub releases page\n2. Run the installer and follow the prompts\n3. Add Neovim to your PATH if not done automatically\n\n### From source (Unix-like systems):\n```bash\ngit clone https://github.com/neovim/neovim.git\ncd neovim\nmake CMAKE_BUILD_TYPE=Release\nsudo make install\n```\n\nAfter installation, you can verify it by running `nvim --version` in your terminal.",
+            "created_at": 18129.044975627,
+            "elapsed_time": 10.0157331670016,
+            "inputs": {
+                "var1": {
+                    "value": "I am var1"
+                },
+                "var2": {
+                    "value": "I am var2"
+                }
+            },
             "outputs": {
-                "_created_time": 547061.149137775,
-                "_elapsed_time": 8.720310870558023e-05,
-                "content": "Hello! How can I assist you today?"
+                "_created_time": 18129.502422278,
+                "_elapsed_time": 0.00013378599760471843,
+                "content": "\nTo install Neovim, the process varies depending on your operating system:\n\n### For macOS:\nUsing Homebrew:\n```bash\nbrew install neovim\n```\n\n### For Linux (Debian/Ubuntu):\n```bash\nsudo apt update\nsudo apt install neovim\n```\n\nFor other Linux distributions, you can use their respective package managers or build from source.\n\n### For Windows:\n1. Download the latest Windows installer from the official Neovim GitHub releases page\n2. Run the installer and follow the prompts\n3. Add Neovim to your PATH if not done automatically\n\n### From source (Unix-like systems):\n```bash\ngit clone https://github.com/neovim/neovim.git\ncd neovim\nmake CMAKE_BUILD_TYPE=Release\nsudo make install\n```\n\nAfter installation, you can verify it by running `nvim --version` in your terminal."
+            },
+            "reference": {
+                "chunks": {
+                    "20": {
+                        "content": "```cd /usr/ports/editors/neovim/ && make install```## Android[Termux](https://github.com/termux/termux-app) offers a Neovim package.",
+                        "dataset_id": "456ce60c5e1511f0907f09f583941b45",
+                        "doc_type": "",
+                        "document_id": "4bdd2ff65e1511f0907f09f583941b45",
+                        "document_name": "INSTALL22.md",
+                        "id": "4b8935ac0a22deb1",
+                        "image_id": "",
+                        "positions": [
+                            [
+                                12,
+                                11,
+                                11,
+                                11,
+                                11
+                            ]
+                        ],
+                        "similarity": 0.5705525104787287,
+                        "term_similarity": 0.5000000005,
+                        "url": null,
+                        "vector_similarity": 0.7351750337624289
+                    }
+                },
+                "doc_aggs": {
+                    "INSTALL(1).md": {
+                        "count": 2,
+                        "doc_id": "4bdfb42e5e1511f0907f09f583941b45",
+                        "doc_name": "INSTALL(1).md"
+                    },
+                    "INSTALL.md": {
+                        "count": 2,
+                        "doc_id": "4bd7fdd85e1511f0907f09f583941b45",
+                        "doc_name": "INSTALL.md"
+                    },
+                    "INSTALL22.md": {
+                        "count": 3,
+                        "doc_id": "4bdd2ff65e1511f0907f09f583941b45",
+                        "doc_name": "INSTALL22.md"
+                    },
+                    "INSTALL3.md": {
+                        "count": 1,
+                        "doc_id": "4bdab5825e1511f0907f09f583941b45",
+                        "doc_name": "INSTALL3.md"
+                    }
+                }
             }
         },
         "event": "workflow_finished",
-        "message_id": "25807f94783611f095171a6272e682d8",
-        "session_id": "25663198783611f095171a6272e682d8",
-        "task_id": "99ee29d6783511f09c921a6272e682d8"
+        "message_id": "c4692a2683d911f0858253708ecb6573",
+        "session_id": "c39f6f9c83d911f0858253708ecb6573",
+        "task_id": "d1f79142831f11f09cc51795b9eb07c0"
     }
 }
 ```
@@ -3592,7 +4108,7 @@ Lists agents.
 #### Request
 
 - Method: GET
-- URL: `/api/v1/agents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&name={agent_name}&id={agent_id}`
+- URL: `/api/v1/agents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&title={agent_name}&id={agent_id}`
 - Headers:
   - `'Authorization: Bearer <YOUR_API_KEY>'`
 
@@ -3600,7 +4116,7 @@ Lists agents.
 
 ```bash
 curl --request GET \
-     --url http://{address}/api/v1/agents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&name={agent_name}&id={agent_id} \
+     --url http://{address}/api/v1/agents?page={page}&page_size={page_size}&orderby={orderby}&desc={desc}&title={agent_name}&id={agent_id} \
      --header 'Authorization: Bearer <YOUR_API_KEY>'
 ```
 
@@ -3618,7 +4134,7 @@ curl --request GET \
   Indicates whether the retrieved agents should be sorted in descending order. Defaults to `true`.
 - `id`: (*Filter parameter*), `string`  
   The ID of the agent to retrieve.
-- `name`: (*Filter parameter*), `string`  
+- `title`: (*Filter parameter*), `string`  
   The name of the agent to retrieve.
 
 #### Response
@@ -3881,3 +4397,77 @@ Failure:
 ```
 
 ---
+
+### System
+---
+### Check system health
+
+**GET** `/v1/system/healthz`
+
+Check the health status of RAGFlow’s dependencies (database, Redis, document engine, object storage).
+
+#### Request
+
+- Method: GET
+- URL: `/v1/system/healthz`
+- Headers:
+  - 'Content-Type: application/json'
+  (no Authorization required)
+
+##### Request example
+
+```bash
+curl --request GET
+     --url http://{address}/v1/system/healthz
+     --header 'Content-Type: application/json'
+```
+
+##### Request parameters
+
+- `address`: (*Path parameter*), string  
+  The host and port of the backend service (e.g., `localhost:7897`).
+
+---
+
+#### Responses
+
+- **200 OK** – All services healthy
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "db": "ok",
+  "redis": "ok",
+  "doc_engine": "ok",
+  "storage": "ok",
+  "status": "ok"
+}
+```
+
+- **500 Internal Server Error** – At least one service unhealthy
+
+```http
+HTTP/1.1 500 INTERNAL SERVER ERROR
+Content-Type: application/json
+
+{
+  "db": "ok",
+  "redis": "nok",
+  "doc_engine": "ok",
+  "storage": "ok",
+  "status": "nok",
+  "_meta": {
+    "redis": {
+      "elapsed": "5.2",
+      "error": "Lost connection!"
+    }
+  }
+}
+```
+
+Explanation:  
+- Each service is reported as "ok" or "nok".  
+- The top-level `status` reflects overall health.  
+- If any service is "nok", detailed error info appears in `_meta`.  

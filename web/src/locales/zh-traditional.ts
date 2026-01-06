@@ -115,7 +115,7 @@ export default {
       similarityThreshold: '相似度閾值',
       similarityThresholdTip:
         '我們使用混合相似度得分來評估兩行文本之間的距離。它是加權關鍵詞相似度和向量餘弦相似度。如果查詢和塊之間的相似度小於此閾值，則該塊將被過濾掉。預設值設定為 0.2，也就是說，文本塊的混合相似度得分至少要 20 才會被檢索。',
-      vectorSimilarityWeight: '關鍵字相似度權重',
+      vectorSimilarityWeight: '矢量相似度權重',
       vectorSimilarityWeightTip:
         '我們使用混合相似性評分來評估兩行文本之間的距離。它是加權關鍵字相似性和矢量餘弦相似性或rerank得分（0〜1）。兩個權重的總和為1.0。',
       testText: '測試文本',
@@ -160,7 +160,7 @@ export default {
       cancel: '取消',
       rerankModel: 'rerank模型',
       rerankPlaceholder: '請選擇',
-      rerankTip: `非必選項：若不選擇 rerank 模型，系統將默認採用關鍵詞相似度與向量餘弦相似度相結合的混合查詢方式；如果設定了 rerank 模型，則混合查詢中的向量相似度部分將被 rerank 打分替代。請注意：採用 rerank 模型會非常耗時。如需選用 rerank 模型，建議使用 SaaS 的 rerank 模型服務；如果你傾向使用本地部署的 rerank 模型，請務必確保你使用 docker-compose-gpu.yml 啟動 RAGFlow。`,
+      rerankTip: `非必選項：若不選擇 rerank 模型，系統將默認採用關鍵詞相似度與向量餘弦相似度相結合的混合查詢方式；如果設定了 rerank 模型，則混合查詢中的向量相似度部分將被 rerank 打分替代。請注意：採用 rerank 模型會非常耗時。如需選用 rerank 模型，建議使用 SaaS 的 rerank 模型服務；如果你傾向使用本地部署的 rerank 模型，請務必確保你使用 docker-compose-gpu.yml 啟動 ConvergedRAG。`,
       topK: 'Top-K',
       topKTip: `與 Rerank 模型配合使用，用於設定傳給 Rerank 模型的文本塊數量。`,
       delimiter: `文字分段標識符`,
@@ -593,6 +593,9 @@ export default {
       baseUrl: 'base-url',
       baseUrlTip:
         '如果您的 API 密鑰來自 OpenAI，請忽略它。任何其他中間提供商都會提供帶有 API 密鑰的基本 URL。',
+      tongyiBaseUrlTip:
+        '中國用戶無需填寫或使用 https://dashscope.aliyuncs.com/compatible-mode/v1。國際用戶請使用 https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+      tongyiBaseUrlPlaceholder: '（僅國際用戶，請參閱提示）',
       modify: '修改',
       systemModelSettings: '設定預設模型',
       chatModel: '聊天模型',
@@ -602,7 +605,7 @@ export default {
         '默認的tts模型會被用於在對話過程中請求語音生成時使用。如未显示可选模型，请根据 https://ragflow.io/docs/dev/supported_models 确认你的模型供应商是否提供该模型。',
       embeddingModel: '嵌入模型',
       embeddingModelTip:
-        '如未顯示可選模型，請檢查你是否在使用 RAGFlow slim 版（不含嵌入模型）；或根據 https://ragflow.io/docs/dev/supported_models 確認你的模型供應商是否提供該模型。',
+        '如未顯示可選模型，請檢查你是否在使用 ConvergedRAG slim 版（不含嵌入模型）；或根據 https://ragflow.io/docs/dev/supported_models 確認你的模型供應商是否提供該模型。',
       img2txtModel: 'img2Txt模型',
       img2txtModelTip:
         '所有新創建的知識庫都將使用默認的 img2txt 模型。它可以描述圖片或視頻。如未顯示可選模型，請根據 https://ragflow.io/docs/dev/supported_models 確認你的模型供應商是否提供該模型。',
@@ -845,6 +848,9 @@ export default {
       duckDuckGo: 'DuckDuckGo',
       duckDuckGoDescription:
         '此元件用於從 www.duckduckgo.com 取得搜尋結果。通常，它作為知識庫的補充。 Top N 指定您需要採用的搜尋結果數。',
+      searXNG: 'SearXNG',
+      searXNGDescription:
+        '該組件通過您提供的 SearXNG 實例地址進行搜索。請設置 Top N 和實例 URL。',
       channel: '頻道',
       channelTip: '針對該組件的輸入進行文字搜尋或新聞搜索',
       text: '文字',
@@ -1147,6 +1153,8 @@ export default {
       headers: '請求頭',
       cleanHtml: '清除 HTML',
       cleanHtmlTip: '如果回應是 HTML 格式並且只需要主要內容，請將其開啟。',
+      invalidUrl:
+        '必須是有效的 URL 或包含變量佔位符的 URL，格式為 {variable_name} 或 {component@variable}',
       reference: '引用',
       input: '輸入',
       output: '輸出',

@@ -14,12 +14,25 @@
 #  limitations under the License.
 #
 from datetime import datetime
-
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 import peewee
+from peewee import InterfaceError, OperationalError
 
 from api.db.db_models import DB
-from api.utils import current_timestamp, datetime_format, get_uuid
+from common.misc_utils import get_uuid
+from common.time_utils import current_timestamp, timestamp_to_date
 
+def retry_db_operation(func):
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=5),
+        retry=retry_if_exception_type((InterfaceError, OperationalError)),
+        before_sleep=lambda retry_state: print(f"RETRY {retry_state.attempt_number} TIMES"),
+        reraise=True,
+    )
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
 
 class CommonService:
     """Base service class that provides common database operations.
@@ -77,7 +90,7 @@ class CommonService:
         else:
             query_records = cls.model.select()
         if reverse is not None:
-            if not order_by or not hasattr(cls, order_by):
+            if not order_by or not hasattr(cls.model, order_by):
                 order_by = "create_time"
             if reverse is True:
                 query_records = query_records.order_by(cls.model.getter_by(order_by).desc())
@@ -157,9 +170,9 @@ class CommonService:
         if "id" not in kwargs:
             kwargs["id"] = get_uuid()
         kwargs["create_time"] = current_timestamp()
-        kwargs["create_date"] = datetime_format(datetime.now())
+        kwargs["create_date"] = timestamp_to_date(current_timestamp())
         kwargs["update_time"] = current_timestamp()
-        kwargs["update_date"] = datetime_format(datetime.now())
+        kwargs["update_date"] = timestamp_to_date(current_timestamp())
         sample_obj = cls.model(**kwargs).save(force_insert=True)
         return sample_obj
 
@@ -178,7 +191,7 @@ class CommonService:
         with DB.atomic():
             for d in data_list:
                 d["create_time"] = current_timestamp()
-                d["create_date"] = datetime_format(datetime.now())
+                d["create_date"] = timestamp_to_date(current_timestamp())
             for i in range(0, len(data_list), batch_size):
                 cls.model.insert_many(data_list[i : i + batch_size]).execute()
 
@@ -197,11 +210,12 @@ class CommonService:
         with DB.atomic():
             for data in data_list:
                 data["update_time"] = current_timestamp()
-                data["update_date"] = datetime_format(datetime.now())
+                data["update_date"] = timestamp_to_date(current_timestamp())
                 cls.model.update(data).where(cls.model.id == data["id"]).execute()
 
     @classmethod
     @DB.connection_context()
+    @retry_db_operation
     def update_by_id(cls, pid, data):
         # Update a single record by ID
         # Args:
@@ -210,7 +224,7 @@ class CommonService:
         # Returns:
         #     Number of records updated
         data["update_time"] = current_timestamp()
-        data["update_date"] = datetime_format(datetime.now())
+        data["update_date"] = timestamp_to_date(current_timestamp())
         num = cls.model.update(data).where(cls.model.id == pid).execute()
         return num
 

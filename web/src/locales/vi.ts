@@ -112,10 +112,10 @@ export default {
       processDuration: 'Thời gian xử lý',
       progressMsg: 'Thông báo tiến trình',
       testingDescription:
-        'Thực hiện kiểm tra truy hồi để kiểm tra xem RAGFlow có thể phục hồi nội dung mong muốn cho LLM không.Vui lòng lưu ý rằng các thay đổi được thực hiện ở đây sẽ không được lưu tự động. Nếu bạn điều chỉnh các cài đặt mặc định ở đây, chẳng hạn như trọng số tương tự của từ khóa, hãy đảm bảo rằng bạn cập nhật các cài đặt liên quan theo cách đồng bộ trong cài đặt trợ lý trò chuyện hoặc cài đặt toán tử thu hồi.',
+        'Thực hiện kiểm tra truy hồi để kiểm tra xem ConvergedRAG có thể phục hồi nội dung mong muốn cho LLM không.Vui lòng lưu ý rằng các thay đổi được thực hiện ở đây sẽ không được lưu tự động. Nếu bạn điều chỉnh các cài đặt mặc định ở đây, chẳng hạn như trọng số tương tự của từ khóa, hãy đảm bảo rằng bạn cập nhật các cài đặt liên quan theo cách đồng bộ trong cài đặt trợ lý trò chuyện hoặc cài đặt toán tử thu hồi.',
       similarityThreshold: 'Ngưỡng tương đồng',
       similarityThresholdTip:
-        'RAGFlow sử dụng kết hợp giữa độ tương đồng từ khóa được trọng số và độ tương đồng vectơ cosin được trọng số hoặc kết hợp giữa độ tương đồng từ khóa được trọng số và điểm xếp hạng được tính lại trong quá trình truy hồi. Tham số này đặt ngưỡng cho sự tương đồng giữa truy vấn của người dùng và các khối. Bất kỳ khối nào có điểm tương đồng dưới ngưỡng này sẽ bị loại khỏi kết quả. Theo mặc định, ngưỡng được đặt thành 0,2. Điều đó có nghĩa là chỉ những đoạn có điểm tương đồng hỗn hợp từ 20 trở lên mới được truy xuất.',
+        'ConvergedRAG sử dụng kết hợp giữa độ tương đồng từ khóa được trọng số và độ tương đồng vectơ cosin được trọng số hoặc kết hợp giữa độ tương đồng từ khóa được trọng số và điểm xếp hạng được tính lại trong quá trình truy hồi. Tham số này đặt ngưỡng cho sự tương đồng giữa truy vấn của người dùng và các khối. Bất kỳ khối nào có điểm tương đồng dưới ngưỡng này sẽ bị loại khỏi kết quả. Theo mặc định, ngưỡng được đặt thành 0,2. Điều đó có nghĩa là chỉ những đoạn có điểm tương đồng hỗn hợp từ 20 trở lên mới được truy xuất.',
       vectorSimilarityWeight: 'Trọng số tương đồng từ khóa',
       vectorSimilarityWeightTip:
         'Cài đặt trọng số của độ tương đồng từ khóa trong điểm tương đồng kết hợp, được sử dụng với độ tương đồng vectơ cosin hoặc với điểm xếp hạng được tính lại. Tổng của hai trọng số phải bằng 1.0.',
@@ -155,13 +155,13 @@ export default {
       changeSpecificCategory: 'Thay đổi danh mục cụ thể',
       uploadTitle: 'Nhấp hoặc kéo thả tệp vào khu vực này để tải lên',
       uploadDescription:
-        'RAGFlow hỗ trợ tải lên tệp một lần hoặc theo lô. Đối với RAGFlow triển khai cục bộ: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 1GB, với giới hạn tải lên theo lô là 32 tệp. Không có giới hạn về tổng số tệp trên mỗi tài khoản. Đối với demo.ragflow.io: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 10MB, với mỗi tệp không vượt quá 10MB và tối đa là 128 tệp trên mỗi tài khoản.',
+        'ConvergedRAG hỗ trợ tải lên tệp một lần hoặc theo lô. Đối với ConvergedRAG triển khai cục bộ: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 1GB, với giới hạn tải lên theo lô là 32 tệp. Không có giới hạn về tổng số tệp trên mỗi tài khoản. Đối với demo.ragflow.io: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 10MB, với mỗi tệp không vượt quá 10MB và tối đa là 128 tệp trên mỗi tài khoản.',
       chunk: 'Khối',
       bulk: 'Hàng loạt',
       cancel: 'Hủy bỏ',
       rerankModel: 'Mô hình xếp hạng lại',
       rerankPlaceholder: 'Vui lòng chọn',
-      rerankTip: `Tùy chọn. Nếu để trống, RAGFlow sẽ sử dụng kết hợp giữa độ tương đồng từ khóa có trọng số và độ tương đồng cosine vector có trọng số; nếu chọn mô hình rerank, điểm rerank có trọng số sẽ thay thế độ tương đồng cosine vector có trọng số. Xin lưu ý rằng việc sử dụng mô hình rerank sẽ làm tăng đáng kể thời gian phản hồi của hệ thống. Nếu bạn muốn sử dụng mô hình rerank, hãy đảm bảo sử dụng SaaS reranker; nếu bạn muốn sử dụng mô hình rerank triển khai cục bộ, hãy khởi động RAGFlow bằng docker-compose-gpu.yml.`,
+      rerankTip: `Tùy chọn. Nếu để trống, ConvergedRAG sẽ sử dụng kết hợp giữa độ tương đồng từ khóa có trọng số và độ tương đồng cosine vector có trọng số; nếu chọn mô hình rerank, điểm rerank có trọng số sẽ thay thế độ tương đồng cosine vector có trọng số. Xin lưu ý rằng việc sử dụng mô hình rerank sẽ làm tăng đáng kể thời gian phản hồi của hệ thống. Nếu bạn muốn sử dụng mô hình rerank, hãy đảm bảo sử dụng SaaS reranker; nếu bạn muốn sử dụng mô hình rerank triển khai cục bộ, hãy khởi động ConvergedRAG bằng docker-compose-gpu.yml.`,
       topK: 'Top-K',
       topKTip: `Sử dụng cùng với Rerank model, thiết lập này xác định số lượng đoạn văn cần gửi đến mô hình reranking được chỉ định.`,
       delimiter: 'Dấu phân cách cho phân đoạn văn bản',
@@ -412,7 +412,7 @@ export default {
       topN: 'Top N',
       topNTip: `Không phải tất cả các khối có điểm tương đồng vượt quá 'ngưỡng tương đồng' sẽ được cung cấp cho LLMs. LLM chỉ có thể xem 'Top N' khối này.`,
       variable: 'Biến',
-      variableTip: `Sử dụng cùng với các API quản lý trợ lý trò chuyện của RAGFlow, các biến có thể giúp phát triển các chiến lược lời nhắc hệ thống linh hoạt hơn. Các biến được định nghĩa sẽ được sử dụng bởi 'Lời nhắc hệ thống' như một phần của lời nhắc cho LLM. {knowledge} là một biến đặc biệt được bảo lưu, đại diện cho các phần được truy xuất từ cơ sở tri thức được chỉ định, và tất cả các biến nên được đặt trong ngoặc nhọn {} trong 'Lời nhắc hệ thống'. Xem https://ragflow.io/docs/dev/set_chat_variables để biết thêm chi tiết.`,
+      variableTip: `Sử dụng cùng với các API quản lý trợ lý trò chuyện của ConvergedRAG, các biến có thể giúp phát triển các chiến lược lời nhắc hệ thống linh hoạt hơn. Các biến được định nghĩa sẽ được sử dụng bởi 'Lời nhắc hệ thống' như một phần của lời nhắc cho LLM. {knowledge} là một biến đặc biệt được bảo lưu, đại diện cho các phần được truy xuất từ cơ sở tri thức được chỉ định, và tất cả các biến nên được đặt trong ngoặc nhọn {} trong 'Lời nhắc hệ thống'. Xem https://ragflow.io/docs/dev/set_chat_variables để biết thêm chi tiết.`,
       add: 'Thêm',
       key: 'Khóa',
       optional: 'Tùy chọn',
@@ -565,7 +565,7 @@ export default {
         'LLM trò chuyện mặc định mà tất cả các cơ sở kiến thức mới tạo sẽ sử dụng.',
       embeddingModel: 'Mô hình nhúng',
       embeddingModelTip:
-        'Mô hình nhúng mặc định cho từng cơ sở tri thức mới được tạo. Nếu bạn không tìm thấy mô hình nhúng từ danh sách thả xuống, hãy kiểm tra xem bạn có đang sử dụng phiên bản RAGFlow slim (không bao gồm các mô hình nhúng) hay không, hoặc kiểm tra https://ragflow.io/docs/dev/supported_models để xem nhà cung cấp mô hình của bạn có hỗ trợ mô hình này không.',
+        'Mô hình nhúng mặc định cho từng cơ sở tri thức mới được tạo. Nếu bạn không tìm thấy mô hình nhúng từ danh sách thả xuống, hãy kiểm tra xem bạn có đang sử dụng phiên bản ConvergedRAG slim (không bao gồm các mô hình nhúng) hay không, hoặc kiểm tra https://ragflow.io/docs/dev/supported_models để xem nhà cung cấp mô hình của bạn có hỗ trợ mô hình này không.',
       img2txtModel: 'Mô hình img2txt',
       img2txtModelTip:
         'Mô hình img2txt mặc định cho mỗi cơ sở tri thức mới được tạo. Nó mô tả một bức tranh hoặc video. Nếu bạn không thể tìm thấy mô hình từ danh sách thả xuống, hãy kiểm tra https://ragflow.io/docs/dev/supported_models để xem nhà cung cấp mô hình của bạn có hỗ trợ mô hình này không.',
@@ -745,7 +745,7 @@ export default {
       directory: 'Thư mục',
       uploadTitle: 'Nhấp hoặc kéo thả tệp vào khu vực này để tải lên',
       uploadDescription:
-        'RAGFlow hỗ trợ tải lên tệp một lần hoặc theo lô. Đối với RAGFlow triển khai cục bộ: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 1GB, với giới hạn tải lên theo lô là 32 tệp. Không có giới hạn về tổng số tệp trên mỗi tài khoản. Đối với demo.ragflow.io: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 10MB, với mỗi tệp không vượt quá 10MB và tối đa là 128 tệp trên mỗi tài khoản.',
+        'ConvergedRAG hỗ trợ tải lên tệp một lần hoặc theo lô. Đối với ConvergedRAG triển khai cục bộ: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 1GB, với giới hạn tải lên theo lô là 32 tệp. Không có giới hạn về tổng số tệp trên mỗi tài khoản. Đối với demo.ragflow.io: giới hạn tổng kích thước tệp cho mỗi lần tải lên là 10MB, với mỗi tệp không vượt quá 10MB và tối đa là 128 tệp trên mỗi tài khoản.',
       local: 'Tải lên cục bộ',
       s3: 'Tải lên S3',
       preview: 'Xem trước',
@@ -818,6 +818,9 @@ export default {
       duckDuckGo: 'DuckDuckGo',
       duckDuckGoDescription:
         'Một thành phần truy xuất kết quả tìm kiếm từ duckduckgo.com, với TopN xác định số lượng kết quả tìm kiếm. Nó bổ sung cho các cơ sở kiến thức hiện có.',
+      searXNG: 'SearXNG',
+      searXNGDescription:
+        'Một thành phần truy xuất kết quả tìm kiếm từ searxng.com, với TopN xác định số lượng kết quả tìm kiếm. Nó bổ sung cho các cơ sở kiến thức hiện có.',
       channel: 'Kênh',
       channelTip: `Thực hiện tìm kiếm văn bản hoặc tìm kiếm tin tức trên đầu vào của thành phần`,
       text: 'Văn bản',
@@ -1125,6 +1128,8 @@ export default {
       cleanHtml: 'Làm sạch HTML',
       cleanHtmlTip:
         'Nếu phản hồi được định dạng HTML và chỉ muốn nội dung chính, hãy bật nó lên.',
+      invalidUrl:
+        'Phải là URL hợp lệ hoặc URL có chứa các biến theo định dạng {ten_bien} hoặc {thanh_phan@bien}',
       reference: 'Tham khảo',
       input: 'Đầu vào',
       output: 'Đầu ra',

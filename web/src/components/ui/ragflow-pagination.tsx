@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/pagination';
 import { RAGFlowSelect, RAGFlowSelectOptionType } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { t } from 'i18next';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export type RAGFlowPaginationType = {
@@ -22,7 +23,7 @@ export type RAGFlowPaginationType = {
 
 export function RAGFlowPagination({
   current = 1,
-  pageSize = 10,
+  pageSize = 5,
   total = 0,
   onChange,
   showSizeChanger = true,
@@ -32,7 +33,7 @@ export function RAGFlowPagination({
 
   const sizeChangerOptions: RAGFlowSelectOptionType[] = useMemo(() => {
     return [10, 20, 50, 100].map((x) => ({
-      label: <span>{x} / page</span>,
+      label: <span>{t('pagination.page', { page: x })}</span>,
       value: x.toString(),
     }));
   }, []);
@@ -134,7 +135,9 @@ export function RAGFlowPagination({
 
   return (
     <section className="flex items-center justify-end text-text-sub-title-invert">
-      <span className="mr-4">Total {total}</span>
+      <span className="mr-4 text-text-primary">
+        {t('pagination.total', { total: total })}
+      </span>
       <Pagination className="w-auto mx-0 mr-4">
         <PaginationContent>
           <PaginationItem>
@@ -149,7 +152,7 @@ export function RAGFlowPagination({
             ) : (
               <PaginationItem
                 key={page}
-                className={cn({
+                className={cn('text-text-disabled', {
                   ['bg-bg-card rounded-md text-text-primary']:
                     currentPage === page,
                 })}
@@ -169,13 +172,14 @@ export function RAGFlowPagination({
           </PaginationItem>
         </PaginationContent>
       </Pagination>
+
       {showSizeChanger && (
         <RAGFlowSelect
           options={sizeChangerOptions}
           value={currentPageSize}
           onChange={handlePageSizeChange}
-          triggerClassName="bg-bg-card"
-        ></RAGFlowSelect>
+          triggerClassName="bg-bg-card border-transparent"
+        />
       )}
     </section>
   );

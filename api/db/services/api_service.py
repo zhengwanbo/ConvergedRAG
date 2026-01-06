@@ -19,7 +19,7 @@ import peewee
 
 from api.db.db_models import DB, API4Conversation, APIToken, Dialog
 from api.db.services.common_service import CommonService
-from api.utils import current_timestamp, datetime_format
+from common.time_utils import current_timestamp, timestamp_to_date
 
 
 class APITokenService(CommonService):
@@ -30,10 +30,15 @@ class APITokenService(CommonService):
     def used(cls, token):
         return cls.model.update({
             "update_time": current_timestamp(),
-            "update_date": datetime_format(datetime.now()),
+            "update_date": timestamp_to_date(current_timestamp()),
         }).where(
             cls.model.token == token
         )
+
+    @classmethod
+    @DB.connection_context()
+    def delete_by_tenant_id(cls, tenant_id):
+        return cls.model.delete().where(cls.model.tenant_id == tenant_id).execute()
 
 
 class API4ConversationService(CommonService):
@@ -100,3 +105,8 @@ class API4ConversationService(CommonService):
             cls.model.create_date <= to_date,
             cls.model.source == source
         ).group_by(cls.model.create_date.truncate("day")).dicts()
+
+    @classmethod
+    @DB.connection_context()
+    def delete_by_dialog_ids(cls, dialog_ids):
+        return cls.model.delete().where(cls.model.dialog_id.in_(dialog_ids)).execute()

@@ -1,12 +1,16 @@
 import { useSetModalState, useShowDeleteConfirm } from '@/hooks/common-hooks';
+import { useRegister } from '@/hooks/login-hooks';
 import {
   useAddTenantUser,
   useAgreeTenant,
   useDeleteTenantUser,
   useFetchUserInfo,
 } from '@/hooks/user-setting-hooks';
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { updateUserStatus } from '@/services/admin-service';
+import { TenantRole } from '../constants';
 
 export const useAddUser = () => {
   const { addTenantUser } = useAddTenantUser();
@@ -85,4 +89,67 @@ export const useHandleQuitUser = () => {
   };
 
   return { handleQuitTenantUser, loading };
+};
+
+
+export const useUpdateUserStatus = () => {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation();
+
+  const mutation = useMutation({
+    mutationFn: ({ email, isActive }: { email: string; isActive: boolean }) =>
+      updateUserStatus(email, isActive ? 'on' : 'off'),
+    onSuccess: () => {
+      // Invalidate user list queries to refresh the data
+      queryClient.invalidateQueries({ queryKey: ['listTenantUser'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update user status:', error);
+      // TODO: Show error notification
+    },
+  });
+
+  return mutation;
+};
+
+export const useEditUser = () => {
+  const {
+    visible: editingUserModalVisible,
+    hideModal: hideEditingUserModal,
+    showModal: showEditingUserModal,
+  } = useSetModalState();
+  const [editingUser, setEditingUser] = useState<{
+    user_id: string;
+    nickname: string;
+    email: string;
+    role: TenantRole;
+  } | null>(null);
+
+  const handleEditUser = useCallback(
+    (userData: { user_id: string; nickname: string; email: string; role: TenantRole }) => {
+      setEditingUser(userData);
+      showEditingUserModal();
+    },
+    [showEditingUserModal]
+  );
+
+  const handleEditUserOk = useCallback(
+    async (data: { nickname: string; role: TenantRole }) => {
+      // Note: Currently there's no API to update tenant user info
+      // This is a placeholder for future implementation
+      console.log('Would update user:', editingUser?.user_id, data);
+      // TODO: Implement API call when available
+      hideEditingUserModal();
+      setEditingUser(null);
+    },
+    [editingUser, hideEditingUserModal]
+  );
+
+  return {
+    editingUserModalVisible,
+    hideEditingUserModal,
+    showEditingUserModal: handleEditUser,
+    handleEditUserOk,
+    editingUser,
+  };
 };

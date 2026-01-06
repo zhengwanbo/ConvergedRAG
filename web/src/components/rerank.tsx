@@ -123,7 +123,7 @@ function RerankFormField() {
 }
 
 export const rerankFormSchema = {
-  [RerankId]: z.string().optional(),
+  [RerankId]: z.string().nullable().optional(),
   top_k: z.coerce.number().optional(),
 };
 

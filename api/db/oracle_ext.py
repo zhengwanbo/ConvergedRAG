@@ -12,6 +12,11 @@ from peewee import Node
 from peewee import NodeList
 from peewee import CharField
 from peewee import TextField
+from peewee import IntegerField
+from peewee import BigIntegerField
+from peewee import BooleanField
+from peewee import FloatField
+from peewee import DateTimeField
 
 #from peewee import compiler
 import logging
@@ -23,7 +28,7 @@ logging.basicConfig(
     format='%(levelname)s - %(filename)s:%(lineno)d - %(message)s'
 )
 logger = logging.getLogger('oracle_ext')
-#logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
 
 class ExceptionWrapper(object):
     __slots__ = ('exceptions',)
@@ -85,10 +90,11 @@ class OracleDatabase(Database):
     def _connect(self):
         if oracle is None:
             raise ImproperlyConfigured('oracledb is required.')
+        
         #logger.debug(self.connect_params)
         user = self.connect_params.get('user')
         password = self.connect_params.get('password')
-        db = self.connect_params.get('db','freepdb1')
+        db = self.connect_params.get('db', 'freepdb1')
         host = self.connect_params.get('host')
         port = self.connect_params.get('port')
         encoding = self.connect_params.get('encoding')
@@ -96,14 +102,29 @@ class OracleDatabase(Database):
 
         # 构建 DSN
         if user and password and host and port and db:
-            dsn = f'{user}/{password}@{host}:{port}/{db}'
-            #logger.info(f"生成的 DSN 字符串: {dsn}")
+            # Use proper oracledb connection syntax
+            dsn = f"{host}:{port}/{db}"
+            logger.debug(f"Connecting to Oracle database: {host}:{port}/{db} as user {user}")
         else:
-            logger.error("缺少必要的连接参数，无法生成 DSN 字符串。")
+            error_msg = "Missing required connection parameters: "
+            missing = []
+            if not user: missing.append("user")
+            if not password: missing.append("password")
+            if not host: missing.append("host")
+            if not port: missing.append("port")
+            if not db: missing.append("db")
+            error_msg += ", ".join(missing)
+            logger.error(error_msg)
+            raise ImproperlyConfigured(error_msg)
 
-        conn = oracle.connect(dsn)
-
-        return conn
+        try:
+            # Use proper oracledb.connect() with separate parameters
+            conn = oracle.connect(user=user, password=password, dsn=dsn)
+            logger.debug("Successfully connected to Oracle database")
+            return conn
+        except Exception as e:
+            logger.error(f"Failed to connect to Oracle database: {e}")
+            raise
 
     def _placeholder(self, idx):
         return ':%d' % idx
@@ -437,18 +458,56 @@ class JSONField(TextField):
 
 
 class PooledOracleDatabase(PooledDatabase, OracleDatabase):
+    def __init__(self, *args, **kwargs):
+        # Log pool configuration
+        max_connections = kwargs.get('max_connections', 20)
+        stale_timeout = kwargs.get('stale_timeout', 300)
+        timeout = kwargs.get('timeout', 0)
+        
+        logger.debug(f"PooledOracleDatabase configuration: max_connections={max_connections}, stale_timeout={stale_timeout}, timeout={timeout}")
+        super().__init__(*args, **kwargs)
+        logger.debug("PooledOracleDatabase initialized with connection pooling")
+
     def _is_closed(self, conn):
         try:
-            return not bool(conn.ping())
-        except:
+            # Try to execute a simple query to check if connection is alive
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM DUAL")
+            cursor.fetchone()
+            cursor.close()
+            #logger.debug("Connection health check passed (not closed)")
+            return False
+        except Exception as e:
+            logger.debug(f"Connection health check failed (closed): {e}")
             return True
 
     def _can_reuse(self, conn):
         try:
-            conn.ping()
+            # Try to execute a simple query to check if connection is alive
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1 FROM DUAL")
+            cursor.fetchone()
+            cursor.close()
+            #logger.debug("Connection health check passed (can reuse)")
             return True
-        except:
-            return False 
+        except Exception as e:
+            logger.debug(f"Connection health check failed (cannot reuse): {e}")
+            return False
+
+    def _connect(self, *args, **kwargs):
+        # Log when a new connection is created (not from pool)
+        #logger.debug("Creating new Oracle database connection (pool may be growing)")
+        return super()._connect(*args, **kwargs)
+
+    def connect(self, *args, **kwargs):
+        # Log when connecting (getting connection from pool)
+        #logger.debug("Getting Oracle database connection from pool")
+        return super().connect(*args, **kwargs)
+
+    def close(self, *args, **kwargs):
+        # Log when closing connection (returning to pool)
+        #logger.debug("Returning Oracle database connection to pool")
+        return super().close(*args, **kwargs)
 
 
 class OracleMigrator(SchemaMigrator):
@@ -470,6 +529,23 @@ class OracleMigrator(SchemaMigrator):
         # 根据 Peewee 字段类型映射到 Oracle 数据类型
         if isinstance(field, CharField):
             return f"VARCHAR2({field.max_length})"
+        elif isinstance(field, TextField):
+            # Check if it's a JSONField by checking class name or attributes
+            if field.__class__.__name__ == 'JSONField' or hasattr(field, '_serialized_type'):
+                # Use CLOB for JSON in older Oracle versions, or JSON for Oracle 21c+
+                # For compatibility, use CLOB
+                return "CLOB"
+            return "CLOB"
+        elif isinstance(field, IntegerField):
+            return "NUMBER(11)"
+        elif isinstance(field, BigIntegerField):
+            return "NUMBER(19)"
+        elif isinstance(field, BooleanField):
+            return "NUMBER(1)"
+        elif isinstance(field, FloatField):
+            return "BINARY_DOUBLE"
+        elif isinstance(field, DateTimeField):
+            return "TIMESTAMP"
         # 可以根据需要添加更多字段类型的映射
         raise ValueError(f"Unsupported field type: {type(field)}")
 

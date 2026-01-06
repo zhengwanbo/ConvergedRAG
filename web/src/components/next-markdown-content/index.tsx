@@ -54,8 +54,11 @@ function MarkdownContent({
   const { setDocumentIds, data: fileThumbnails } =
     useFetchDocumentThumbnailsByIds();
   const contentWithCursor = useMemo(() => {
-    // let text = DOMPurify.sanitize(content);
-    let text = content;
+    let text = DOMPurify.sanitize(content, {
+      ADD_TAGS: ['think', 'section'],
+      ADD_ATTR: ['class'],
+    });
+    // let text = content;
     if (text === '') {
       text = t('chat.searching');
     }
@@ -235,7 +238,7 @@ function MarkdownContent({
             <HoverCardTrigger>
               <CircleAlert className="size-4 inline-block" />
             </HoverCardTrigger>
-            <HoverCardContent>
+            <HoverCardContent className="max-w-3xl">
               {renderPopoverContent(chunkIndex)}
             </HoverCardContent>
           </HoverCard>

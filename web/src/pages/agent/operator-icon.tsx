@@ -6,14 +6,15 @@ import { ReactComponent as GithubIcon } from '@/assets/svg/github.svg';
 import { ReactComponent as GoogleScholarIcon } from '@/assets/svg/google-scholar.svg';
 import { ReactComponent as GoogleIcon } from '@/assets/svg/google.svg';
 import { ReactComponent as PubMedIcon } from '@/assets/svg/pubmed.svg';
+import { ReactComponent as SearXNGIcon } from '@/assets/svg/searxng.svg';
 import { ReactComponent as TavilyIcon } from '@/assets/svg/tavily.svg';
 import { ReactComponent as WenCaiIcon } from '@/assets/svg/wencai.svg';
 import { ReactComponent as WikipediaIcon } from '@/assets/svg/wikipedia.svg';
 import { ReactComponent as YahooFinanceIcon } from '@/assets/svg/yahoo-finance.svg';
 
-import { IconFont } from '@/components/icon-font';
+import { IconFontFill } from '@/components/icon-font';
 import { cn } from '@/lib/utils';
-import { HousePlus } from 'lucide-react';
+import { FileCode, HousePlus } from 'lucide-react';
 import { Operator } from './constant';
 
 interface IProps {
@@ -36,6 +37,9 @@ export const OperatorIconMap = {
   [Operator.ExeSQL]: 'executesql-0',
   [Operator.Invoke]: 'httprequest-0',
   [Operator.Email]: 'sendemail-0',
+  [Operator.ListOperations]: 'a-listoperations',
+  [Operator.VariableAssigner]: 'a-ariableassigner',
+  [Operator.VariableAggregator]: 'aggregator',
 };
 
 export const SVGIconMap = {
@@ -46,6 +50,7 @@ export const SVGIconMap = {
   [Operator.Google]: GoogleIcon,
   [Operator.GoogleScholar]: GoogleScholarIcon,
   [Operator.PubMed]: PubMedIcon,
+  [Operator.SearXNG]: SearXNGIcon,
   [Operator.TavilyExtract]: TavilyIcon,
   [Operator.TavilySearch]: TavilyIcon,
   [Operator.Wikipedia]: WikipediaIcon,
@@ -53,28 +58,50 @@ export const SVGIconMap = {
   [Operator.WenCai]: WenCaiIcon,
   [Operator.Crawler]: CrawlerIcon,
 };
+export const LucideIconMap = {
+  [Operator.DataOperations]: FileCode,
+};
 
 const Empty = () => {
   return <div className="hidden"></div>;
 };
 
 const OperatorIcon = ({ name, className }: IProps) => {
-  const Icon = OperatorIconMap[name as keyof typeof OperatorIconMap] || Empty;
-  const SvgIcon = SVGIconMap[name as keyof typeof SVGIconMap] || Empty;
+  const Icon = OperatorIconMap[name as keyof typeof OperatorIconMap];
+  const SvgIcon = SVGIconMap[name as keyof typeof SVGIconMap];
+  const LucideIcon = LucideIconMap[name as keyof typeof LucideIconMap];
 
   if (name === Operator.Begin) {
     return (
-      <div className="inline-block p-1 bg-accent-primary rounded-sm">
+      <div
+        className={cn(
+          'inline-block p-1 bg-accent-primary rounded-sm',
+          className,
+        )}
+      >
         <HousePlus className="rounded size-3" />
       </div>
     );
   }
 
-  return typeof Icon === 'string' ? (
-    <IconFont name={Icon} className={cn('size-5 ', className)}></IconFont>
-  ) : (
-    <SvgIcon className={cn('size-5 fill-current', className)}></SvgIcon>
-  );
+  if (Icon) {
+    return (
+      <IconFontFill
+        name={Icon}
+        className={cn('size-5 ', className)}
+      ></IconFontFill>
+    );
+  }
+
+  if (LucideIcon) {
+    return <LucideIcon className={cn('size-5', className)} />;
+  }
+
+  if (SvgIcon) {
+    return <SvgIcon className={cn('size-5 fill-current', className)}></SvgIcon>;
+  }
+
+  return <Empty></Empty>;
 };
 
 export default OperatorIcon;

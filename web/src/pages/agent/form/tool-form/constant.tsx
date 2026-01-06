@@ -1,6 +1,5 @@
 import { Operator } from '../../constant';
 import AkShareForm from '../akshare-form';
-import DeepLForm from '../deepl-form';
 import ArXivForm from './arxiv-form';
 import BingForm from './bing-form';
 import CrawlerForm from './crawler-form';
@@ -12,6 +11,7 @@ import GoogleForm from './google-form';
 import GoogleScholarForm from './google-scholar-form';
 import PubMedForm from './pubmed-form';
 import RetrievalForm from './retrieval-form';
+import SearXNGForm from './searxng-form';
 import TavilyForm from './tavily-form';
 import WenCaiForm from './wencai-form';
 import WikipediaForm from './wikipedia-form';
@@ -27,7 +27,6 @@ export const ToolFormConfigMap = {
   [Operator.Google]: GoogleForm,
   [Operator.Bing]: BingForm,
   [Operator.GoogleScholar]: GoogleScholarForm,
-  [Operator.DeepL]: DeepLForm,
   [Operator.GitHub]: GithubForm,
   [Operator.ExeSQL]: ExeSQLForm,
   [Operator.AkShare]: AkShareForm,
@@ -37,4 +36,5 @@ export const ToolFormConfigMap = {
   [Operator.TavilySearch]: TavilyForm,
   [Operator.TavilyExtract]: TavilyForm,
   [Operator.WenCai]: WenCaiForm,
+  [Operator.SearXNG]: SearXNGForm,
 };

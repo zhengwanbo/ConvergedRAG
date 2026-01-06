@@ -3,12 +3,9 @@ import { Toaster } from '@/components/ui/toaster';
 import i18n from '@/locales/config';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App, ConfigProvider, ConfigProviderProps, theme } from 'antd';
-import pt_BR from 'antd/lib/locale/pt_BR';
-import deDE from 'antd/locale/de_DE';
 import enUS from 'antd/locale/en_US';
-import vi_VN from 'antd/locale/vi_VN';
+import jaJP from 'antd/locale/ja_JP';
 import zhCN from 'antd/locale/zh_CN';
-import zh_HK from 'antd/locale/zh_HK';
 import dayjs from 'dayjs';
 import advancedFormat from 'dayjs/plugin/advancedFormat';
 import customParseFormat from 'dayjs/plugin/customParseFormat';
@@ -33,10 +30,7 @@ dayjs.extend(weekYear);
 const AntLanguageMap = {
   en: enUS,
   zh: zhCN,
-  'zh-TRADITIONAL': zh_HK,
-  vi: vi_VN,
-  'pt-BR': pt_BR,
-  de: deDE,
+  ja: jaJP,
 };
 
 if (process.env.NODE_ENV === 'development') {
@@ -102,7 +96,7 @@ const RootProvider = ({ children }: React.PropsWithChildren) => {
     <TooltipProvider>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider
-          defaultTheme={ThemeEnum.Light}
+          defaultTheme={ThemeEnum.Dark}
           storageKey="ragflow-ui-theme"
         >
           <Root>{children}</Root>

@@ -109,10 +109,10 @@ export default {
       processDuration: 'Duração',
       progressMsg: 'Progresso',
       testingDescription:
-        'Realize um teste de recuperação para verificar se o RAGFlow pode recuperar o conteúdo pretendido para o LLM. Por favor, note que as alterações feitas aqui não são salvas automaticamente. Se você ajustar as configurações padrão aqui, como o peso de similaridade de palavras-chave, certifique-se de atualizar as configurações relacionadas de forma sincronizada nas configurações do assistente de chat ou nas configurações do operador de recuperação.',
+        'Realize um teste de recuperação para verificar se o ConvergedRAG pode recuperar o conteúdo pretendido para o LLM. Por favor, note que as alterações feitas aqui não são salvas automaticamente. Se você ajustar as configurações padrão aqui, como o peso de similaridade de palavras-chave, certifique-se de atualizar as configurações relacionadas de forma sincronizada nas configurações do assistente de chat ou nas configurações do operador de recuperação.',
       similarityThreshold: 'Limite de similaridade',
       similarityThresholdTip:
-        'O RAGFlow emprega uma combinação de similaridade de palavras-chave ponderada e similaridade de cosseno vetorial ponderada, ou uma combinação de similaridade de palavras-chave ponderada e pontuação de reranking ponderada durante a recuperação. Este parâmetro define o limite para similaridades entre a consulta do usuário e os fragmentos. Qualquer fragmento com uma pontuação de similaridade abaixo deste limite será excluído dos resultados. Por padrão, o limite é definido como 0,2. Isso significa que apenas os trechos com uma pontuação de similaridade híbrida de 20 ou mais serão recuperados.',
+        'O ConvergedRAG emprega uma combinação de similaridade de palavras-chave ponderada e similaridade de cosseno vetorial ponderada, ou uma combinação de similaridade de palavras-chave ponderada e pontuação de reranking ponderada durante a recuperação. Este parâmetro define o limite para similaridades entre a consulta do usuário e os fragmentos. Qualquer fragmento com uma pontuação de similaridade abaixo deste limite será excluído dos resultados. Por padrão, o limite é definido como 0,2. Isso significa que apenas os trechos com uma pontuação de similaridade híbrida de 20 ou mais serão recuperados.',
       vectorSimilarityWeight: 'Peso da similaridade de palavras-chave',
       vectorSimilarityWeightTip:
         'Define o peso da similaridade de palavras-chave na pontuação de similaridade combinada, usada com a similaridade de cosseno vetorial ou com a pontuação de reranking. O total dos dois pesos deve ser igual a 1.0.',
@@ -161,7 +161,7 @@ export default {
       rerankModel: 'Modelo de reranking',
       rerankPlaceholder: 'Por favor, selecione',
       rerankTip:
-        'Opcional. Se deixar em branco, o RAGFlow usará uma combinação de similaridade ponderada por palavra-chave e similaridade ponderada do cosseno vetorial; se um modelo de rerank for selecionado, uma pontuação ponderada de reranking substituirá a similaridade ponderada do cosseno vetorial. Esteja ciente de que usar um modelo de rerank aumentará significativamente o tempo de resposta do sistema. Se desejar usar um modelo de rerank, certifique-se de usar um reranker SaaS; se preferir um modelo de rerank implantado localmente, certifique-se de iniciar o RAGFlow com docker-compose-gpu.yml.',
+        'Opcional. Se deixar em branco, o ConvergedRAG usará uma combinação de similaridade ponderada por palavra-chave e similaridade ponderada do cosseno vetorial; se um modelo de rerank for selecionado, uma pontuação ponderada de reranking substituirá a similaridade ponderada do cosseno vetorial. Esteja ciente de que usar um modelo de rerank aumentará significativamente o tempo de resposta do sistema. Se desejar usar um modelo de rerank, certifique-se de usar um reranker SaaS; se preferir um modelo de rerank implantado localmente, certifique-se de iniciar o ConvergedRAG com docker-compose-gpu.yml.',
       topK: 'Top-K',
       topKTip:
         'Usado em conjunto com o Rerank model, essa configuração define o número de trechos de texto a serem enviados ao modelo reranking especificado.',
@@ -367,7 +367,7 @@ export default {
       topN: 'Top N',
       topNTip: `Nem todos os fragmentos com pontuação de similaridade acima do 'limiar de similaridade' serão enviados ao LLM. Isso seleciona os 'Top N' fragmentos recuperados.`,
       variable: 'Variável',
-      variableTip: `Usados em conjunto com as APIs de gerenciamento de assistente de bate-papo do RAGFlow, as variáveis podem ajudar a desenvolver estratégias de prompt do sistema mais flexíveis. As variáveis definidas serão usadas pelo 'Prompt do sistema' como parte dos prompts para o LLM. {knowledge} é uma variável especial reservada que representa partes recuperadas de base(s) de conhecimento especificada(s), e todas as variáveis devem ser cercadas por chaves {} no 'Prompt do sistema'. Veja https://ragflow.io/docs/dev/set_chat_variables para mais detalhes.`,
+      variableTip: `Usados em conjunto com as APIs de gerenciamento de assistente de bate-papo do ConvergedRAG, as variáveis podem ajudar a desenvolver estratégias de prompt do sistema mais flexíveis. As variáveis definidas serão usadas pelo 'Prompt do sistema' como parte dos prompts para o LLM. {knowledge} é uma variável especial reservada que representa partes recuperadas de base(s) de conhecimento especificada(s), e todas as variáveis devem ser cercadas por chaves {} no 'Prompt do sistema'. Veja https://ragflow.io/docs/dev/set_chat_variables para mais detalhes.`,
       add: 'Adicionar',
       key: 'Chave',
       optional: 'Opcional',
@@ -431,7 +431,7 @@ export default {
       extensionTitle: 'Extensão do Chrome',
       tokenError: 'Por favor, crie uma chave API primeiro.',
       betaError:
-        'Por favor, adquira uma chave API do RAGFlow na página Configurações do Sistema primeiro.',
+        'Por favor, adquira uma chave API do ConvergedRAG na página Configurações do Sistema primeiro.',
       searching: 'Pesquisando...',
       parsing: 'Analisando',
       uploading: 'Carregando',
@@ -504,6 +504,10 @@ export default {
       baseUrl: 'URL Base',
       baseUrlTip:
         'Se sua chave da API for do OpenAI, ignore isso. Outros provedores intermediários fornecerão essa URL base com a chave da API.',
+      tongyiBaseUrlTip:
+        'Para usuários chineses, não é necessário preencher ou usar https://dashscope.aliyuncs.com/compatible-mode/v1. Para usuários internacionais, use https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+      tongyiBaseUrlPlaceholder:
+        '(Apenas para usuários internacionais, consulte a dica)',
       modify: 'Modificar',
       systemModelSettings: 'Definir modelos padrão',
       chatModel: 'Modelo de chat',
@@ -511,7 +515,7 @@ export default {
         'O modelo LLM padrão que todos os novos bancos de conhecimento usarão.',
       embeddingModel: 'Modelo de incorporação',
       embeddingModelTip:
-        'O modelo de incorporação padrão para cada nova base de conhecimento criada. Se você não encontrar um modelo de incorporação na lista suspensa, verifique se está usando a edição slim do RAGFlow (que não inclui modelos de incorporação) ou consulte https://ragflow.io/docs/dev/supported_models para verificar se o provedor do modelo suporta este modelo.',
+        'O modelo de incorporação padrão para cada nova base de conhecimento criada. Se você não encontrar um modelo de incorporação na lista suspensa, verifique se está usando a edição slim do ConvergedRAG (que não inclui modelos de incorporação) ou consulte https://ragflow.io/docs/dev/supported_models para verificar se o provedor do modelo suporta este modelo.',
       img2txtModel: 'Modelo Img2Txt',
       img2txtModelTip:
         'O modelo padrão img2txt para cada base de conhecimento recém-criada. Ele descreve uma imagem ou vídeo. Se você não conseguir encontrar um modelo no menu suspenso, verifique https://ragflow.io/docs/dev/supported_models para ver se seu provedor de modelo suporta este modelo.',
@@ -654,13 +658,13 @@ export default {
       uploadTitle:
         'Clique ou arraste o arquivo para esta área para fazer o upload',
       uploadDescription:
-        'O RAGFlow suporta o upload de arquivos de forma individual ou em lote. Para o RAGFlow implantado localmente: o limite total de tamanho de arquivo por upload é de 1GB, com um limite de upload em lote de 32 arquivos. Não há limite para o número total de arquivos por conta. Para o demo.ragflow.io: o limite total de tamanho de arquivo por upload é de 10MB, com cada arquivo não excedendo 10MB e um máximo de 128 arquivos por conta.',
+        'O ConvergedRAG suporta o upload de arquivos de forma individual ou em lote. Para o ConvergedRAG implantado localmente: o limite total de tamanho de arquivo por upload é de 1GB, com um limite de upload em lote de 32 arquivos. Não há limite para o número total de arquivos por conta. Para o demo.ragflow.io: o limite total de tamanho de arquivo por upload é de 10MB, com cada arquivo não excedendo 10MB e um máximo de 128 arquivos por conta.',
       local: 'Uploads locais',
       s3: 'Uploads S3',
       preview: 'Pré-visualização',
       fileError: 'Erro no arquivo',
       uploadLimit:
-        'O RAGFlow suporta o upload de arquivos de forma individual ou em lote. Para o RAGFlow implantado localmente: o limite total de tamanho de arquivo por upload é de 1GB, com um limite de upload em lote de 32 arquivos. Não há limite para o número total de arquivos por conta. Para o demo.ragflow.io: o limite total de tamanho de arquivo por upload é de 10MB, com cada arquivo não excedendo 10MB e um máximo de 128 arquivos por conta.',
+        'O ConvergedRAG suporta o upload de arquivos de forma individual ou em lote. Para o ConvergedRAG implantado localmente: o limite total de tamanho de arquivo por upload é de 1GB, com um limite de upload em lote de 32 arquivos. Não há limite para o número total de arquivos por conta. Para o demo.ragflow.io: o limite total de tamanho de arquivo por upload é de 10MB, com cada arquivo não excedendo 10MB e um máximo de 128 arquivos por conta.',
       destinationFolder: 'Pasta de destino',
     },
     flow: {
@@ -726,6 +730,9 @@ export default {
       duckDuckGo: 'DuckDuckGo',
       duckDuckGoDescription:
         'Um componente que realiza buscas no duckduckgo.com, permitindo especificar o número de resultados de pesquisa usando TopN. Ele complementa as bases de conhecimento existentes.',
+      searXNG: 'SearXNG',
+      searXNGDescription:
+        'Um componente que realiza buscas via URL da instância SearXNG que você fornece. Especifique TopN e URL da instância.',
       channel: 'Canal',
       channelTip: `Realize uma busca por texto ou por notícias na entrada do componente`,
       text: 'Texto',
@@ -1059,6 +1066,8 @@ export default {
       cleanHtml: 'Limpar HTML',
       cleanHtmlTip:
         'Se a resposta for formatada em HTML e apenas o conteúdo principal for desejado, ative esta opção.',
+      invalidUrl:
+        'Deve ser uma URL válida ou uma URL com marcadores de posição de variáveis no formato {nome_variável} ou {componente@variável}',
 
       reference: 'Referência',
       input: 'Entrada',
@@ -1122,7 +1131,6 @@ export default {
       },
       addVariable: 'Adicionar variável',
       variableSettings: 'Configurações da variável',
-      globalVariables: 'Variáveis globais',
       systemPrompt: 'Prompt do sistema',
       addCategory: 'Adicionar categoria',
       categoryName: 'Nome da categoria',

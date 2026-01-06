@@ -18,32 +18,31 @@ import json
 import re
 
 import xxhash
-from flask import request
-from flask_login import current_user, login_required
+from quart import request
 
-from api import settings
-from api.db import LLMType, ParserType
 from api.db.services.dialog_service import meta_filter
 from api.db.services.document_service import DocumentService
 from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.llm_service import LLMBundle
 from api.db.services.search_service import SearchService
 from api.db.services.user_service import UserTenantService
-from api.utils.api_utils import get_data_error_result, get_json_result, server_error_response, validate_request
+from api.utils.api_utils import get_data_error_result, get_json_result, server_error_response, validate_request, \
+    request_json
 from rag.app.qa import beAdoc, rmPrefix
 from rag.app.tag import label_question
 from rag.nlp import rag_tokenizer, search
-from rag.prompts import cross_languages, keyword_extraction
-from rag.prompts.prompts import gen_meta_filter
-from rag.settings import PAGERANK_FLD
-from rag.utils import rmSpace
+from rag.prompts.generator import gen_meta_filter, cross_languages, keyword_extraction
+from common.string_utils import remove_redundant_spaces
+from common.constants import RetCode, LLMType, ParserType, PAGERANK_FLD
+from common import settings
+from api.apps import login_required, current_user
 
 
 @manager.route('/list', methods=['POST'])  # noqa: F821
 @login_required
 @validate_request("doc_id")
-def list_chunk():
-    req = request.json
+async def list_chunk():
+    req = await request_json()
     doc_id = req["doc_id"]
     page = int(req.get("page", 1))
     size = int(req.get("size", 30))
@@ -61,12 +60,12 @@ def list_chunk():
         }
         if "available_int" in req:
             query["available_int"] = int(req["available_int"])
-        sres = settings.retrievaler.search(query, search.index_name(tenant_id), kb_ids, highlight=True)
+        sres = settings.retriever.search(query, search.index_name(tenant_id), kb_ids, highlight=["content_ltks"])
         res = {"total": sres.total, "chunks": [], "doc": doc.to_dict()}
         for id in sres.ids:
             d = {
                 "chunk_id": id,
-                "content_with_weight": rmSpace(sres.highlight[id]) if question and id in sres.highlight else sres.field[
+                "content_with_weight": remove_redundant_spaces(sres.highlight[id]) if question and id in sres.highlight else sres.field[
                     id].get(
                     "content_with_weight", ""),
                 "doc_id": sres.field[id]["doc_id"],
@@ -84,7 +83,7 @@ def list_chunk():
     except Exception as e:
         if str(e).find("not_found") > 0:
             return get_json_result(data=False, message='No chunk found!',
-                                   code=settings.RetCode.DATA_ERROR)
+                                   code=RetCode.DATA_ERROR)
         return server_error_response(e)
 
 
@@ -93,6 +92,7 @@ def list_chunk():
 def get():
     chunk_id = request.args["chunk_id"]
     try:
+        chunk = None
         tenants = UserTenantService.query(user_id=current_user.id)
         if not tenants:
             return get_data_error_result(message="Tenant not found!")
@@ -115,15 +115,15 @@ def get():
     except Exception as e:
         if str(e).find("NotFoundError") >= 0:
             return get_json_result(data=False, message='Chunk not found!',
-                                   code=settings.RetCode.DATA_ERROR)
+                                   code=RetCode.DATA_ERROR)
         return server_error_response(e)
 
 
 @manager.route('/set', methods=['POST'])  # noqa: F821
 @login_required
 @validate_request("doc_id", "chunk_id", "content_with_weight")
-def set():
-    req = request.json
+async def set():
+    req = await request_json()
     d = {
         "id": req["chunk_id"],
         "content_with_weight": req["content_with_weight"]}
@@ -179,8 +179,8 @@ def set():
 @manager.route('/switch', methods=['POST'])  # noqa: F821
 @login_required
 @validate_request("chunk_ids", "available_int", "doc_id")
-def switch():
-    req = request.json
+async def switch():
+    req = await request_json()
     try:
         e, doc = DocumentService.get_by_id(req["doc_id"])
         if not e:
@@ -199,9 +199,8 @@ def switch():
 @manager.route('/rm', methods=['POST'])  # noqa: F821
 @login_required
 @validate_request("chunk_ids", "doc_id")
-def rm():
-    from rag.utils.storage_factory import STORAGE_IMPL
-    req = request.json
+async def rm():
+    req = await request_json()
     try:
         e, doc = DocumentService.get_by_id(req["doc_id"])
         if not e:
@@ -214,8 +213,8 @@ def rm():
         chunk_number = len(deleted_chunk_ids)
         DocumentService.decrement_chunk_num(doc.id, doc.kb_id, 1, chunk_number, 0)
         for cid in deleted_chunk_ids:
-            if STORAGE_IMPL.obj_exist(doc.kb_id, cid):
-                STORAGE_IMPL.rm(doc.kb_id, cid)
+            if settings.STORAGE_IMPL.obj_exist(doc.kb_id, cid):
+                settings.STORAGE_IMPL.rm(doc.kb_id, cid)
         return get_json_result(data=True)
     except Exception as e:
         return server_error_response(e)
@@ -224,8 +223,8 @@ def rm():
 @manager.route('/create', methods=['POST'])  # noqa: F821
 @login_required
 @validate_request("doc_id", "content_with_weight")
-def create():
-    req = request.json
+async def create():
+    req = await request_json()
     chunck_id = xxhash.xxh64((req["content_with_weight"] + req["doc_id"]).encode("utf-8")).hexdigest()
     d = {"id": chunck_id, "content_ltks": rag_tokenizer.tokenize(req["content_with_weight"]),
          "content_with_weight": req["content_with_weight"]}
@@ -282,14 +281,18 @@ def create():
 @manager.route('/retrieval_test', methods=['POST'])  # noqa: F821
 @login_required
 @validate_request("kb_id", "question")
-def retrieval_test():
-    req = request.json
+async def retrieval_test():
+    req = await request_json()
     page = int(req.get("page", 1))
     size = int(req.get("size", 30))
     question = req["question"]
     kb_ids = req["kb_id"]
     if isinstance(kb_ids, str):
         kb_ids = [kb_ids]
+    if not kb_ids:
+        return get_json_result(data=False, message='Please specify dataset firstly.',
+                               code=RetCode.DATA_ERROR)
+
     doc_ids = req.get("doc_ids", [])
     use_kg = req.get("use_kg", False)
     top = int(req.get("top_k", 1024))
@@ -322,7 +325,7 @@ def retrieval_test():
             else:
                 return get_json_result(
                     data=False, message='Only owner of knowledgebase authorized for this operation.',
-                    code=settings.RetCode.OPERATING_ERROR)
+                    code=RetCode.OPERATING_ERROR)
 
         e, kb = KnowledgebaseService.get_by_id(kb_ids[0])
         if not e:
@@ -342,15 +345,16 @@ def retrieval_test():
             question += keyword_extraction(chat_mdl, question)
 
         labels = label_question(question, [kb])
-        ranks = settings.retrievaler.retrieval(question, embd_mdl, tenant_ids, kb_ids, page, size,
+        ranks = settings.retriever.retrieval(question, embd_mdl, tenant_ids, kb_ids, page, size,
                                float(req.get("similarity_threshold", 0.0)),
                                float(req.get("vector_similarity_weight", 0.3)),
                                top,
-                               doc_ids, rerank_mdl=rerank_mdl, highlight=req.get("highlight"),
+                               doc_ids, rerank_mdl=rerank_mdl,
+                                             highlight=req.get("highlight", False),
                                rank_feature=labels
                                )
         if use_kg:
-            ck = settings.kg_retrievaler.retrieval(question,
+            ck = settings.kg_retriever.retrieval(question,
                                                    tenant_ids,
                                                    kb_ids,
                                                    embd_mdl,
@@ -366,7 +370,7 @@ def retrieval_test():
     except Exception as e:
         if str(e).find("not_found") > 0:
             return get_json_result(data=False, message='No chunk found! Check the chunk status please!',
-                                   code=settings.RetCode.DATA_ERROR)
+                                   code=RetCode.DATA_ERROR)
         return server_error_response(e)
 
 
@@ -380,7 +384,7 @@ def knowledge_graph():
         "doc_ids": [doc_id],
         "knowledge_graph_kwd": ["graph", "mind_map"]
     }
-    sres = settings.retrievaler.search(req, search.index_name(tenant_id), kb_ids)
+    sres = settings.retriever.search(req, search.index_name(tenant_id), kb_ids)
     obj = {"graph": {}, "mind_map": {}}
     for id in sres.ids[:2]:
         ty = sres.field[id]["knowledge_graph_kwd"]

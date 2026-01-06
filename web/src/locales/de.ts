@@ -112,10 +112,10 @@ export default {
       processDuration: 'Dauer',
       progressMsg: 'Fortschritt',
       testingDescription:
-        'Führen Sie einen Abruftest durch, um zu prüfen, ob RAGFlow die beabsichtigten Inhalte für das LLM wiederherstellen kann.',
+        'Führen Sie einen Abruftest durch, um zu prüfen, ob ConvergedRAG die beabsichtigten Inhalte für das LLM wiederherstellen kann.',
       similarityThreshold: 'Ähnlichkeitsschwelle',
       similarityThresholdTip:
-        'RAGFlow verwendet entweder eine Kombination aus gewichteter Schlüsselwortähnlichkeit und gewichteter Vektorkosinus-Ähnlichkeit oder eine Kombination aus gewichteter Schlüsselwortähnlichkeit und gewichteter Neuordnungsbewertung während des Abrufs. Dieser Parameter legt den Schwellenwert für Ähnlichkeiten zwischen der Benutzeranfrage und den Chunks fest. Jeder Chunk mit einer Ähnlichkeitsbewertung unter diesem Schwellenwert wird von den Ergebnissen ausgeschlossen. Standardmäßig ist der Schwellenwert auf 0,2 festgelegt. Das bedeutet, dass nur Textblöcke mit einer hybriden Ähnlichkeitsbewertung von 20 oder höher abgerufen werden.',
+        'ConvergedRAG verwendet entweder eine Kombination aus gewichteter Schlüsselwortähnlichkeit und gewichteter Vektorkosinus-Ähnlichkeit oder eine Kombination aus gewichteter Schlüsselwortähnlichkeit und gewichteter Neuordnungsbewertung während des Abrufs. Dieser Parameter legt den Schwellenwert für Ähnlichkeiten zwischen der Benutzeranfrage und den Chunks fest. Jeder Chunk mit einer Ähnlichkeitsbewertung unter diesem Schwellenwert wird von den Ergebnissen ausgeschlossen. Standardmäßig ist der Schwellenwert auf 0,2 festgelegt. Das bedeutet, dass nur Textblöcke mit einer hybriden Ähnlichkeitsbewertung von 20 oder höher abgerufen werden.',
       vectorSimilarityWeight: 'Schlüsselwortähnlichkeitsgewicht',
       vectorSimilarityWeightTip:
         'Dies legt das Gewicht der Schlüsselwortähnlichkeit im kombinierten Ähnlichkeitswert fest, entweder in Verbindung mit der Vektorkosinus-Ähnlichkeit oder mit der Neuordnungsbewertung. Die Summe der beiden Gewichte muss 1,0 ergeben.',
@@ -157,14 +157,14 @@ export default {
       changeSpecificCategory: 'Spezifische Kategorie ändern',
       uploadTitle: 'Ziehen Sie Ihre Datei hierher, um sie hochzuladen',
       uploadDescription:
-        'RAGFlow unterstützt das Hochladen von Dateien einzeln oder in Batches. Für lokal bereitgestelltes RAGFlow: Die maximale Dateigröße pro Upload beträgt 1 GB, mit einem Batch-Upload-Limit von 32 Dateien. Es gibt keine Begrenzung der Gesamtanzahl an Dateien pro Konto. Für demo.ragflow.io: Die maximale Dateigröße pro Upload beträgt 10 MB, wobei jede Datei nicht größer als 10 MB sein darf und maximal 128 Dateien pro Konto erlaubt sind.',
+        'ConvergedRAG unterstützt das Hochladen von Dateien einzeln oder in Batches. Für lokal bereitgestelltes ConvergedRAG: Die maximale Dateigröße pro Upload beträgt 1 GB, mit einem Batch-Upload-Limit von 32 Dateien. Es gibt keine Begrenzung der Gesamtanzahl an Dateien pro Konto. Für demo.ragflow.io: Die maximale Dateigröße pro Upload beträgt 10 MB, wobei jede Datei nicht größer als 10 MB sein darf und maximal 128 Dateien pro Konto erlaubt sind.',
       chunk: 'Chunk',
       bulk: 'Masse',
       cancel: 'Abbrechen',
       rerankModel: 'Neuordnungsmodell',
       rerankPlaceholder: 'Bitte auswählen',
       rerankTip:
-        'Wenn leer gelassen, verwendet RAGFlow eine Kombination aus gewichteter Schlüsselwortähnlichkeit und gewichteter Vektorkosinus-Ähnlichkeit; wenn ein Neuordnungsmodell ausgewählt wird, ersetzt eine gewichtete Neuordnungsbewertung die gewichtete Vektorkosinus-Ähnlichkeit. Bitte beachten Sie, dass die Verwendung eines Neuordnungsmodells die Antwortzeit des Systems erheblich erhöht.',
+        'Wenn leer gelassen, verwendet ConvergedRAG eine Kombination aus gewichteter Schlüsselwortähnlichkeit und gewichteter Vektorkosinus-Ähnlichkeit; wenn ein Neuordnungsmodell ausgewählt wird, ersetzt eine gewichtete Neuordnungsbewertung die gewichtete Vektorkosinus-Ähnlichkeit. Bitte beachten Sie, dass die Verwendung eines Neuordnungsmodells die Antwortzeit des Systems erheblich erhöht.',
       topK: 'Top-K',
       topKTip:
         'In Verbindung mit dem Rerank model wird mit dieser Einstellung die Anzahl der Textblöcke festgelegt, die an das angegebene reranking model gesendet werden.',
@@ -458,7 +458,7 @@ export default {
         'Nicht alle Chunks mit einem Ähnlichkeitswert über dem "Ähnlichkeitsschwellenwert" werden an das LLM gesendet. Dies wählt die "Top N" Chunks aus den abgerufenen aus.',
       variable: 'Variable',
       variableTip:
-        'In Kombination mit den APIs zur Verwaltung von Chat-Assistenten von RAGFlow können Variablen dazu beitragen, flexiblere System-Prompt-Strategien zu entwickeln. Die definierten Variablen werden von „System-Prompt“ als Teil der Prompts für das LLM verwendet. {knowledge} ist eine spezielle reservierte Variable, die Teile darstellt, die aus den angegebenen Wissensbasen abgerufen werden, und alle Variablen sollten in geschweiften Klammern {} im „System-Prompt“ eingeschlossen werden. Weitere Informationen finden Sie unter https://ragflow.io/docs/dev/set_chat_variables.',
+        'In Kombination mit den APIs zur Verwaltung von Chat-Assistenten von ConvergedRAG können Variablen dazu beitragen, flexiblere System-Prompt-Strategien zu entwickeln. Die definierten Variablen werden von „System-Prompt“ als Teil der Prompts für das LLM verwendet. {knowledge} ist eine spezielle reservierte Variable, die Teile darstellt, die aus den angegebenen Wissensbasen abgerufen werden, und alle Variablen sollten in geschweiften Klammern {} im „System-Prompt“ eingeschlossen werden. Weitere Informationen finden Sie unter https://ragflow.io/docs/dev/set_chat_variables.',
       add: 'Hinzufügen',
       key: 'Schlüssel',
       optional: 'Optional',
@@ -526,7 +526,7 @@ export default {
       extensionTitle: 'Chrome-Erweiterung',
       tokenError: 'Bitte erstellen Sie zuerst einen API-Schlüssel.',
       betaError:
-        'Bitte erwerben Sie zuerst einen RAGFlow-API-Schlüssel auf der Systemeinstellungsseite.',
+        'Bitte erwerben Sie zuerst einen ConvergedRAG-API-Schlüssel auf der Systemeinstellungsseite.',
       searching: 'Suche...',
       parsing: 'Analysiere',
       uploading: 'Hochladen',
@@ -624,6 +624,10 @@ export default {
       baseUrl: 'Basis-URL',
       baseUrlTip:
         'Wenn Ihr API-Schlüssel von OpenAI stammt, ignorieren Sie dies. Andere Zwischenanbieter geben diese Basis-URL mit dem API-Schlüssel an.',
+      tongyiBaseUrlTip:
+        'Für chinesische Benutzer ist keine Eingabe erforderlich oder verwenden Sie https://dashscope.aliyuncs.com/compatible-mode/v1. Für internationale Benutzer verwenden Sie https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+      tongyiBaseUrlPlaceholder:
+        '(Nur für internationale Benutzer, bitte Hinweis beachten)',
       modify: 'Ändern',
       systemModelSettings: 'Standardmodelle festlegen',
       chatModel: 'Chat-Modell',
@@ -631,7 +635,7 @@ export default {
         'Das Standard-Chat-LLM, das alle neu erstellten Wissensdatenbanken verwenden werden.',
       embeddingModel: 'Embedding-Modell',
       embeddingModelTip:
-        'Das Standard-Einbettungsmodell für jede neu erstellte Wissensdatenbank. Wenn Sie kein Einbettungsmodell in der Dropdown-Liste finden, prüfen Sie, ob Sie die RAGFlow Slim Edition verwenden (die keine Einbettungsmodelle enthält), oder überprüfen Sie https://ragflow.io/docs/dev/supported_models, um zu sehen, ob Ihr Modellanbieter dieses Modell unterstützt.',
+        'Das Standard-Einbettungsmodell für jede neu erstellte Wissensdatenbank. Wenn Sie kein Einbettungsmodell in der Dropdown-Liste finden, prüfen Sie, ob Sie die ConvergedRAG Slim Edition verwenden (die keine Einbettungsmodelle enthält), oder überprüfen Sie https://ragflow.io/docs/dev/supported_models, um zu sehen, ob Ihr Modellanbieter dieses Modell unterstützt.',
       img2txtModel: 'Img2txt-Modell',
       img2txtModelTip:
         'Das Standardmodell img2txt für jede neu erstellte Wissensdatenbank. Es beschreibt ein Bild oder Video. Wenn Sie kein Modell im Dropdown-Menü finden können, überprüfen Sie https://ragflow.io/docs/dev/supported_models, um zu sehen, ob Ihr Modellanbieter dieses Modell unterstützt.',
@@ -785,7 +789,7 @@ export default {
       directory: 'Verzeichnis',
       uploadTitle: 'Ziehen Sie Ihre Datei hierher, um sie hochzuladen',
       uploadDescription:
-        'RAGFlow unterstützt das Hochladen von Dateien einzeln oder in Batches. Für lokal bereitgestelltes RAGFlow: Die maximale Dateigröße pro Upload beträgt 1 GB, mit einem Batch-Upload-Limit von 32 Dateien. Es gibt keine Begrenzung der Gesamtanzahl an Dateien pro Konto. Für demo.ragflow.io: Die maximale Dateigröße pro Upload beträgt 10 MB, wobei jede Datei nicht größer als 10 MB sein darf und maximal 128 Dateien pro Konto erlaubt sind.',
+        'ConvergedRAG unterstützt das Hochladen von Dateien einzeln oder in Batches. Für lokal bereitgestelltes ConvergedRAG: Die maximale Dateigröße pro Upload beträgt 1 GB, mit einem Batch-Upload-Limit von 32 Dateien. Es gibt keine Begrenzung der Gesamtanzahl an Dateien pro Konto. Für demo.ragflow.io: Die maximale Dateigröße pro Upload beträgt 10 MB, wobei jede Datei nicht größer als 10 MB sein darf und maximal 128 Dateien pro Konto erlaubt sind.',
       local: 'Lokale Uploads',
       s3: 'S3-Uploads',
       preview: 'Vorschau',
@@ -868,6 +872,9 @@ export default {
       duckDuckGo: 'DuckDuckGo',
       duckDuckGoDescription:
         'Eine Komponente, die auf duckduckgo.com sucht und Ihnen ermöglicht, die Anzahl der Suchergebnisse mit TopN anzugeben. Sie ergänzt die vorhandenen Wissensdatenbanken.',
+      searXNG: 'SearXNG',
+      searXNGDescription:
+        'Eine Komponente, die auf https://searxng.org/ sucht und Ihnen ermöglicht, die Anzahl der Suchergebnisse mit TopN anzugeben. Sie ergänzt die vorhandenen Wissensdatenbanken.',
       channel: 'Kanal',
       channelTip:
         'Führt eine Textsuche oder Nachrichtensuche für die Eingabe der Komponente durch',
@@ -1163,6 +1170,8 @@ export default {
       cleanHtml: 'HTML bereinigen',
       cleanHtmlTip:
         'Wenn die Antwort im HTML-Format vorliegt und nur der Hauptinhalt gewünscht wird, schalten Sie dies bitte ein.',
+      invalidUrl:
+        'Muss eine gültige URL oder eine URL mit Variablenplatzhaltern im Format {Variablenname} oder {Komponente@Variable} sein',
       reference: 'Referenz',
       input: 'Eingabe',
       output: 'Ausgabe',
@@ -1220,7 +1229,6 @@ export default {
       },
       addVariable: 'Variable hinzufügen',
       variableSettings: 'Variableneinstellungen',
-      globalVariables: 'Globale Variablen',
       systemPrompt: 'System-Prompt',
       addCategory: 'Kategorie hinzufügen',
       categoryName: 'Kategoriename',

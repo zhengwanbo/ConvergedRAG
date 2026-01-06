@@ -1,6 +1,6 @@
 ragflow:
   host: 0.0.0.0
-  http_port: 9380
+  http_port: 9381
 oracle:
   name: 'rag_flow'
   user: 'conrag'
@@ -8,8 +8,9 @@ oracle:
   db: 'freepdb1'
   host: 'localhost'
   port: 1521
-  max_connections: 100
-  stale_timeout: 30
+  max_connections: 50
+  stale_timeout: 300 
+  timeout: 9000
 orclvector:
   name: 'rag_vector'
   user: 'ragvector'
@@ -17,14 +18,15 @@ orclvector:
   db: 'freepdb1'
   host: 'localhost'
   port: 1521
-  max_connections: 100
-  stale_timeout: 30
+  max_connections: 30
+  stale_timeout: 300
+  timeout: 9000  
 minio:
   user: 'rag_flow'
   password: 'infini_rag_flow'
   host: 'localhost:9000'
 redis:
-  db: 1
+  db: 0
   password: 'infini_rag_flow'
   host: 'localhost:6379'
 

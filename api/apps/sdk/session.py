@@ -18,14 +18,12 @@ import re
 import time
 
 import tiktoken
-from flask import Response, jsonify, request
+from quart import Response, jsonify, request
 
 from agent.canvas import Canvas
-from api import settings
-from api.db import LLMType, StatusEnum
 from api.db.db_models import APIToken
 from api.db.services.api_service import API4ConversationService
-from api.db.services.canvas_service import UserCanvasService, completionOpenAI
+from api.db.services.canvas_service import UserCanvasService, completion_openai
 from api.db.services.canvas_service import completion as agent_completion
 from api.db.services.conversation_service import ConversationService, iframe_completion
 from api.db.services.conversation_service import completion as rag_completion
@@ -35,18 +33,19 @@ from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.llm_service import LLMBundle
 from api.db.services.search_service import SearchService
 from api.db.services.user_service import UserTenantService
-from api.utils import get_uuid
-from api.utils.api_utils import check_duplicate_ids, get_data_openai, get_error_data_result, get_json_result, get_result, server_error_response, token_required, validate_request
+from common.misc_utils import get_uuid
+from api.utils.api_utils import check_duplicate_ids, get_data_openai, get_error_data_result, get_json_result, \
+    get_result, server_error_response, token_required, validate_request
 from rag.app.tag import label_question
-from rag.prompts import chunks_format
-from rag.prompts.prompt_template import load_prompt
-from rag.prompts.prompts import cross_languages, gen_meta_filter, keyword_extraction
-
+from rag.prompts.template import load_prompt
+from rag.prompts.generator import cross_languages, gen_meta_filter, keyword_extraction, chunks_format
+from common.constants import RetCode, LLMType, StatusEnum
+from common import settings
 
 @manager.route("/chats/<chat_id>/sessions", methods=["POST"])  # noqa: F821
 @token_required
-def create(tenant_id, chat_id):
-    req = request.json
+async def create(tenant_id, chat_id):
+    req = await request.json
     req["dialog_id"] = chat_id
     dia = DialogService.query(tenant_id=tenant_id, id=req["dialog_id"], status=StatusEnum.VALID.value)
     if not dia:
@@ -89,7 +88,8 @@ def create_agent_session(tenant_id, agent_id):
     canvas.reset()
 
     cvs.dsl = json.loads(str(canvas))
-    conv = {"id": session_id, "dialog_id": cvs.id, "user_id": user_id, "message": [{"role": "assistant", "content": canvas.get_prologue()}], "source": "agent", "dsl": cvs.dsl}
+    conv = {"id": session_id, "dialog_id": cvs.id, "user_id": user_id,
+            "message": [{"role": "assistant", "content": canvas.get_prologue()}], "source": "agent", "dsl": cvs.dsl}
     API4ConversationService.save(**conv)
     conv["agent_id"] = conv.pop("dialog_id")
     return get_result(data=conv)
@@ -97,8 +97,8 @@ def create_agent_session(tenant_id, agent_id):
 
 @manager.route("/chats/<chat_id>/sessions/<session_id>", methods=["PUT"])  # noqa: F821
 @token_required
-def update(tenant_id, chat_id, session_id):
-    req = request.json
+async def update(tenant_id, chat_id, session_id):
+    req = await request.json
     req["dialog_id"] = chat_id
     conv_id = session_id
     conv = ConversationService.query(id=conv_id, dialog_id=chat_id)
@@ -119,8 +119,8 @@ def update(tenant_id, chat_id, session_id):
 
 @manager.route("/chats/<chat_id>/completions", methods=["POST"])  # noqa: F821
 @token_required
-def chat_completion(tenant_id, chat_id):
-    req = request.json
+async def chat_completion(tenant_id, chat_id):
+    req = await request.json
     if not req:
         req = {"question": ""}
     if not req.get("session_id"):
@@ -149,7 +149,7 @@ def chat_completion(tenant_id, chat_id):
 @manager.route("/chats_openai/<chat_id>/chat/completions", methods=["POST"])  # noqa: F821
 @validate_request("model", "messages")  # noqa: F821
 @token_required
-def chat_completion_openai_like(tenant_id, chat_id):
+async def chat_completion_openai_like(tenant_id, chat_id):
     """
     OpenAI-like chat completion API that simulates the behavior of OpenAI's completions endpoint.
 
@@ -206,7 +206,7 @@ def chat_completion_openai_like(tenant_id, chat_id):
         if reference:
             print(completion.choices[0].message.reference)
     """
-    req = request.get_json()
+    req = await request.get_json()
 
     need_reference = bool(req.get("reference", False))
 
@@ -280,7 +280,7 @@ def chat_completion_openai_like(tenant_id, chat_id):
                     reasoning_match = re.search(r"<think>(.*?)</think>", answer, flags=re.DOTALL)
                     if reasoning_match:
                         reasoning_part = reasoning_match.group(1)
-                        content_part = answer[reasoning_match.end() :]
+                        content_part = answer[reasoning_match.end():]
                     else:
                         reasoning_part = ""
                         content_part = answer
@@ -325,7 +325,8 @@ def chat_completion_openai_like(tenant_id, chat_id):
             response["choices"][0]["delta"]["content"] = None
             response["choices"][0]["delta"]["reasoning_content"] = None
             response["choices"][0]["finish_reason"] = "stop"
-            response["usage"] = {"prompt_tokens": len(prompt), "completion_tokens": token_used, "total_tokens": len(prompt) + token_used}
+            response["usage"] = {"prompt_tokens": len(prompt), "completion_tokens": token_used,
+                                 "total_tokens": len(prompt) + token_used}
             if need_reference:
                 response["choices"][0]["delta"]["reference"] = chunks_format(last_ans.get("reference", []))
                 response["choices"][0]["delta"]["final_content"] = last_ans.get("answer", "")
@@ -382,8 +383,8 @@ def chat_completion_openai_like(tenant_id, chat_id):
 @manager.route("/agents_openai/<agent_id>/chat/completions", methods=["POST"])  # noqa: F821
 @validate_request("model", "messages")  # noqa: F821
 @token_required
-def agents_completion_openai_compatibility(tenant_id, agent_id):
-    req = request.json
+async def agents_completion_openai_compatibility(tenant_id, agent_id):
+    req = await request.json
     tiktokenenc = tiktoken.get_encoding("cl100k_base")
     messages = req.get("messages", [])
     if not messages:
@@ -410,11 +411,11 @@ def agents_completion_openai_compatibility(tenant_id, agent_id):
     stream = req.pop("stream", False)
     if stream:
         resp = Response(
-            completionOpenAI(
+            completion_openai(
                 tenant_id,
                 agent_id,
                 question,
-                session_id=req.get("id", req.get("metadata", {}).get("id", "")),
+                session_id=req.pop("session_id", req.get("id", "")) or req.get("metadata", {}).get("id", ""),
                 stream=True,
                 **req,
             ),
@@ -428,11 +429,11 @@ def agents_completion_openai_compatibility(tenant_id, agent_id):
     else:
         # For non-streaming, just return the response directly
         response = next(
-            completionOpenAI(
+            completion_openai(
                 tenant_id,
                 agent_id,
                 question,
-                session_id=req.get("id", req.get("metadata", {}).get("id", "")),
+                session_id=req.pop("session_id", req.get("id", "")) or req.get("metadata", {}).get("id", ""),
                 stream=False,
                 **req,
             )
@@ -442,10 +443,9 @@ def agents_completion_openai_compatibility(tenant_id, agent_id):
 
 @manager.route("/agents/<agent_id>/completions", methods=["POST"])  # noqa: F821
 @token_required
-def agent_completions(tenant_id, agent_id):
-    req = request.json
+async def agent_completions(tenant_id, agent_id):
+    req = await request.json
 
-    ans = {}
     if req.get("stream", True):
 
         def generate():
@@ -456,14 +456,13 @@ def agent_completions(tenant_id, agent_id):
                     except Exception:
                         continue
 
-                if ans.get("event") != "message" or not ans.get("data", {}).get("reference", None):
+                if ans.get("event") not in ["message", "message_end"]:
                     continue
 
                 yield answer
 
             yield "data:[DONE]\n\n"
 
-    if req.get("stream", True):
         resp = Response(generate(), mimetype="text/event-stream")
         resp.headers.add_header("Cache-control", "no-cache")
         resp.headers.add_header("Connection", "keep-alive")
@@ -472,6 +471,8 @@ def agent_completions(tenant_id, agent_id):
         return resp
 
     full_content = ""
+    reference = {}
+    final_ans = ""
     for answer in agent_completion(tenant_id=tenant_id, agent_id=agent_id, **req):
         try:
             ans = json.loads(answer[5:])
@@ -480,11 +481,14 @@ def agent_completions(tenant_id, agent_id):
                 full_content += ans["data"]["content"]
 
             if ans.get("data", {}).get("reference", None):
-                ans["data"]["content"] = full_content
-                return get_result(data=ans)
+                reference.update(ans["data"]["reference"])
+
+            final_ans = ans
         except Exception as e:
             return get_result(data=f"**ERROR**: {str(e)}")
-    return get_result(data=ans)
+    final_ans["data"]["content"] = full_content
+    final_ans["data"]["reference"] = reference
+    return get_result(data=final_ans)
 
 
 @manager.route("/chats/<chat_id>/sessions", methods=["GET"])  # noqa: F821
@@ -557,7 +561,8 @@ def list_agent_session(tenant_id, agent_id):
         desc = True
     # dsl defaults to True in all cases except for False and false
     include_dsl = request.args.get("dsl") != "False" and request.args.get("dsl") != "false"
-    total, convs = API4ConversationService.get_list(agent_id, tenant_id, page_number, items_per_page, orderby, desc, id, user_id, include_dsl)
+    total, convs = API4ConversationService.get_list(agent_id, tenant_id, page_number, items_per_page, orderby, desc, id,
+                                                    user_id, include_dsl)
     if not convs:
         return get_result(data=[])
     for conv in convs:
@@ -579,7 +584,8 @@ def list_agent_session(tenant_id, agent_id):
                 if message_num != 0 and messages[message_num]["role"] != "user":
                     chunk_list = []
                     # Add boundary and type checks to prevent KeyError
-                    if chunk_num < len(conv["reference"]) and conv["reference"][chunk_num] is not None and isinstance(conv["reference"][chunk_num], dict) and "chunks" in conv["reference"][chunk_num]:
+                    if chunk_num < len(conv["reference"]) and conv["reference"][chunk_num] is not None and isinstance(
+                            conv["reference"][chunk_num], dict) and "chunks" in conv["reference"][chunk_num]:
                         chunks = conv["reference"][chunk_num]["chunks"]
                         for chunk in chunks:
                             # Ensure chunk is a dictionary before calling get method
@@ -604,13 +610,13 @@ def list_agent_session(tenant_id, agent_id):
 
 @manager.route("/chats/<chat_id>/sessions", methods=["DELETE"])  # noqa: F821
 @token_required
-def delete(tenant_id, chat_id):
+async def delete(tenant_id, chat_id):
     if not DialogService.query(id=chat_id, tenant_id=tenant_id, status=StatusEnum.VALID.value):
         return get_error_data_result(message="You don't own the chat")
 
     errors = []
     success_count = 0
-    req = request.json
+    req = await request.json
     convs = ConversationService.query(dialog_id=chat_id)
     if not req:
         ids = None
@@ -637,13 +643,16 @@ def delete(tenant_id, chat_id):
 
     if errors:
         if success_count > 0:
-            return get_result(data={"success_count": success_count, "errors": errors}, message=f"Partially deleted {success_count} sessions with {len(errors)} errors")
+            return get_result(data={"success_count": success_count, "errors": errors},
+                              message=f"Partially deleted {success_count} sessions with {len(errors)} errors")
         else:
             return get_error_data_result(message="; ".join(errors))
 
     if duplicate_messages:
         if success_count > 0:
-            return get_result(message=f"Partially deleted {success_count} sessions with {len(duplicate_messages)} errors", data={"success_count": success_count, "errors": duplicate_messages})
+            return get_result(
+                message=f"Partially deleted {success_count} sessions with {len(duplicate_messages)} errors",
+                data={"success_count": success_count, "errors": duplicate_messages})
         else:
             return get_error_data_result(message=";".join(duplicate_messages))
 
@@ -652,10 +661,10 @@ def delete(tenant_id, chat_id):
 
 @manager.route("/agents/<agent_id>/sessions", methods=["DELETE"])  # noqa: F821
 @token_required
-def delete_agent_session(tenant_id, agent_id):
+async def delete_agent_session(tenant_id, agent_id):
     errors = []
     success_count = 0
-    req = request.json
+    req = await request.json
     cvs = UserCanvasService.query(user_id=tenant_id, id=agent_id)
     if not cvs:
         return get_error_data_result(f"You don't own the agent {agent_id}")
@@ -689,13 +698,16 @@ def delete_agent_session(tenant_id, agent_id):
 
     if errors:
         if success_count > 0:
-            return get_result(data={"success_count": success_count, "errors": errors}, message=f"Partially deleted {success_count} sessions with {len(errors)} errors")
+            return get_result(data={"success_count": success_count, "errors": errors},
+                              message=f"Partially deleted {success_count} sessions with {len(errors)} errors")
         else:
             return get_error_data_result(message="; ".join(errors))
 
     if duplicate_messages:
         if success_count > 0:
-            return get_result(message=f"Partially deleted {success_count} sessions with {len(duplicate_messages)} errors", data={"success_count": success_count, "errors": duplicate_messages})
+            return get_result(
+                message=f"Partially deleted {success_count} sessions with {len(duplicate_messages)} errors",
+                data={"success_count": success_count, "errors": duplicate_messages})
         else:
             return get_error_data_result(message=";".join(duplicate_messages))
 
@@ -704,8 +716,8 @@ def delete_agent_session(tenant_id, agent_id):
 
 @manager.route("/sessions/ask", methods=["POST"])  # noqa: F821
 @token_required
-def ask_about(tenant_id):
-    req = request.json
+async def ask_about(tenant_id):
+    req = await request.json
     if not req.get("question"):
         return get_error_data_result("`question` is required.")
     if not req.get("dataset_ids"):
@@ -728,7 +740,9 @@ def ask_about(tenant_id):
             for ans in ask(req["question"], req["kb_ids"], uid):
                 yield "data:" + json.dumps({"code": 0, "message": "", "data": ans}, ensure_ascii=False) + "\n\n"
         except Exception as e:
-            yield "data:" + json.dumps({"code": 500, "message": str(e), "data": {"answer": "**ERROR**: " + str(e), "reference": []}}, ensure_ascii=False) + "\n\n"
+            yield "data:" + json.dumps(
+                {"code": 500, "message": str(e), "data": {"answer": "**ERROR**: " + str(e), "reference": []}},
+                ensure_ascii=False) + "\n\n"
         yield "data:" + json.dumps({"code": 0, "message": "", "data": True}, ensure_ascii=False) + "\n\n"
 
     resp = Response(stream(), mimetype="text/event-stream")
@@ -741,8 +755,8 @@ def ask_about(tenant_id):
 
 @manager.route("/sessions/related_questions", methods=["POST"])  # noqa: F821
 @token_required
-def related_questions(tenant_id):
-    req = request.json
+async def related_questions(tenant_id):
+    req = await request.json
     if not req.get("question"):
         return get_error_data_result("`question` is required.")
     question = req["question"]
@@ -792,8 +806,8 @@ Related search terms:
 
 
 @manager.route("/chatbots/<dialog_id>/completions", methods=["POST"])  # noqa: F821
-def chatbot_completions(dialog_id):
-    req = request.json
+async def chatbot_completions(dialog_id):
+    req = await request.json
 
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
@@ -842,8 +856,8 @@ def chatbots_inputs(dialog_id):
 
 
 @manager.route("/agentbots/<agent_id>/completions", methods=["POST"])  # noqa: F821
-def agent_bot_completions(agent_id):
-    req = request.json
+async def agent_bot_completions(agent_id):
+    req = await request.json
 
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
@@ -880,12 +894,14 @@ def begin_inputs(agent_id):
         return get_error_data_result(f"Can't find agent by ID: {agent_id}")
 
     canvas = Canvas(json.dumps(cvs.dsl), objs[0].tenant_id)
-    return get_result(data={"title": cvs.title, "avatar": cvs.avatar, "inputs": canvas.get_component_input_form("begin"), "prologue": canvas.get_prologue(), "mode": canvas.get_mode()})
+    return get_result(
+        data={"title": cvs.title, "avatar": cvs.avatar, "inputs": canvas.get_component_input_form("begin"),
+              "prologue": canvas.get_prologue(), "mode": canvas.get_mode()})
 
 
 @manager.route("/searchbots/ask", methods=["POST"])  # noqa: F821
 @validate_request("question", "kb_ids")
-def ask_about_embedded():
+async def ask_about_embedded():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -894,7 +910,7 @@ def ask_about_embedded():
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
-    req = request.json
+    req = await request.json
     uid = objs[0].tenant_id
 
     search_id = req.get("search_id", "")
@@ -909,7 +925,9 @@ def ask_about_embedded():
             for ans in ask(req["question"], req["kb_ids"], uid, search_config=search_config):
                 yield "data:" + json.dumps({"code": 0, "message": "", "data": ans}, ensure_ascii=False) + "\n\n"
         except Exception as e:
-            yield "data:" + json.dumps({"code": 500, "message": str(e), "data": {"answer": "**ERROR**: " + str(e), "reference": []}}, ensure_ascii=False) + "\n\n"
+            yield "data:" + json.dumps(
+                {"code": 500, "message": str(e), "data": {"answer": "**ERROR**: " + str(e), "reference": []}},
+                ensure_ascii=False) + "\n\n"
         yield "data:" + json.dumps({"code": 0, "message": "", "data": True}, ensure_ascii=False) + "\n\n"
 
     resp = Response(stream(), mimetype="text/event-stream")
@@ -922,7 +940,7 @@ def ask_about_embedded():
 
 @manager.route("/searchbots/retrieval_test", methods=["POST"])  # noqa: F821
 @validate_request("kb_id", "question")
-def retrieval_test_embedded():
+async def retrieval_test_embedded():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -931,13 +949,16 @@ def retrieval_test_embedded():
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
-    req = request.json
+    req = await request.json
     page = int(req.get("page", 1))
     size = int(req.get("size", 30))
     question = req["question"]
     kb_ids = req["kb_id"]
     if isinstance(kb_ids, str):
         kb_ids = [kb_ids]
+    if not kb_ids:
+        return get_json_result(data=False, message='Please specify dataset firstly.',
+                               code=RetCode.DATA_ERROR)
     doc_ids = req.get("doc_ids", [])
     similarity_threshold = float(req.get("similarity_threshold", 0.0))
     vector_similarity_weight = float(req.get("vector_similarity_weight", 0.3))
@@ -973,7 +994,8 @@ def retrieval_test_embedded():
                     tenant_ids.append(tenant.tenant_id)
                     break
             else:
-                return get_json_result(data=False, message="Only owner of knowledgebase authorized for this operation.", code=settings.RetCode.OPERATING_ERROR)
+                return get_json_result(data=False, message="Only owner of knowledgebase authorized for this operation.",
+                                       code=RetCode.OPERATING_ERROR)
 
         e, kb = KnowledgebaseService.get_by_id(kb_ids[0])
         if not e:
@@ -993,11 +1015,13 @@ def retrieval_test_embedded():
             question += keyword_extraction(chat_mdl, question)
 
         labels = label_question(question, [kb])
-        ranks = settings.retrievaler.retrieval(
-            question, embd_mdl, tenant_ids, kb_ids, page, size, similarity_threshold, vector_similarity_weight, top, doc_ids, rerank_mdl=rerank_mdl, highlight=req.get("highlight"), rank_feature=labels
+        ranks = settings.retriever.retrieval(
+            question, embd_mdl, tenant_ids, kb_ids, page, size, similarity_threshold, vector_similarity_weight, top,
+            doc_ids, rerank_mdl=rerank_mdl, highlight=req.get("highlight"), rank_feature=labels
         )
         if use_kg:
-            ck = settings.kg_retrievaler.retrieval(question, tenant_ids, kb_ids, embd_mdl, LLMBundle(kb.tenant_id, LLMType.CHAT))
+            ck = settings.kg_retriever.retrieval(question, tenant_ids, kb_ids, embd_mdl,
+                                                 LLMBundle(kb.tenant_id, LLMType.CHAT))
             if ck["content_with_weight"]:
                 ranks["chunks"].insert(0, ck)
 
@@ -1008,13 +1032,14 @@ def retrieval_test_embedded():
         return get_json_result(data=ranks)
     except Exception as e:
         if str(e).find("not_found") > 0:
-            return get_json_result(data=False, message="No chunk found! Check the chunk status please!", code=settings.RetCode.DATA_ERROR)
+            return get_json_result(data=False, message="No chunk found! Check the chunk status please!",
+                                   code=RetCode.DATA_ERROR)
         return server_error_response(e)
 
 
 @manager.route("/searchbots/related_questions", methods=["POST"])  # noqa: F821
 @validate_request("question")
-def related_questions_embedded():
+async def related_questions_embedded():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -1023,7 +1048,7 @@ def related_questions_embedded():
     if not objs:
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
-    req = request.json
+    req = await request.json
     tenant_id = objs[0].tenant_id
     if not tenant_id:
         return get_error_data_result(message="permission denined.")
@@ -1077,7 +1102,8 @@ def detail_share_embedded():
             if SearchService.query(tenant_id=tenant.tenant_id, id=search_id):
                 break
         else:
-            return get_json_result(data=False, message="Has no permission for this operation.", code=settings.RetCode.OPERATING_ERROR)
+            return get_json_result(data=False, message="Has no permission for this operation.",
+                                   code=RetCode.OPERATING_ERROR)
 
         search = SearchService.get_detail(search_id)
         if not search:
@@ -1089,7 +1115,7 @@ def detail_share_embedded():
 
 @manager.route("/searchbots/mindmap", methods=["POST"])  # noqa: F821
 @validate_request("question", "kb_ids")
-def mindmap():
+async def mindmap():
     token = request.headers.get("Authorization").split()
     if len(token) != 2:
         return get_error_data_result(message='Authorization is not valid!"')
@@ -1099,7 +1125,7 @@ def mindmap():
         return get_error_data_result(message='Authentication error: API key is invalid!"')
 
     tenant_id = objs[0].tenant_id
-    req = request.json
+    req = await request.json
 
     search_id = req.get("search_id", "")
     search_app = SearchService.get_detail(search_id) if search_id else {}

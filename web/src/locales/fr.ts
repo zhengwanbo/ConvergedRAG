@@ -116,10 +116,10 @@ export default {
       processDuration: 'Durée',
       progressMsg: 'Progression',
       testingDescription:
-        'Effectuez un test de récupération pour vérifier si RAGFlow peut retrouver le contenu pertinent pour le LLM. Si vous avez modifié les paramètres par défaut, comme le poids de similarité ou le seuil de similarité, ces changements ne seront pas automatiquement sauvegardés. Vous devez les appliquer dans les paramètres de votre assistant de chat ou dans le composant agent de récupération.',
+        'Effectuez un test de récupération pour vérifier si ConvergedRAG peut retrouver le contenu pertinent pour le LLM. Si vous avez modifié les paramètres par défaut, comme le poids de similarité ou le seuil de similarité, ces changements ne seront pas automatiquement sauvegardés. Vous devez les appliquer dans les paramètres de votre assistant de chat ou dans le composant agent de récupération.',
       similarityThreshold: 'Seuil de similarité',
       similarityThresholdTip:
-        'RAGFlow utilise une combinaison de similarité par mots-clés pondérée et de similarité cosinus vectorielle, ou bien un score de réordonnancement pondéré. Ce paramètre fixe le seuil en dessous duquel un segment est exclu. Par défaut, le seuil est 0.2 (soit 20%).',
+        'ConvergedRAG utilise une combinaison de similarité par mots-clés pondérée et de similarité cosinus vectorielle, ou bien un score de réordonnancement pondéré. Ce paramètre fixe le seuil en dessous duquel un segment est exclu. Par défaut, le seuil est 0.2 (soit 20%).',
       vectorSimilarityWeight: 'Poids de similarité des mots-clés',
       vectorSimilarityWeightTip:
         'Définit l’importance de la similarité par mots-clés dans le score global. Le total des poids doit être de 1.0.',
@@ -161,13 +161,13 @@ export default {
       changeSpecificCategory: 'Changer de catégorie spécifique',
       uploadTitle: 'Glissez-déposez votre fichier ici pour le téléverser',
       uploadDescription:
-        'Prise en charge du téléversement unique ou en lot. Pour RAGFlow en local : 1 Go max par téléversement, jusqu’à 32 fichiers. Pour demo.ragflow.io : 10 Mo max par fichier uploadDescription128 fichiers au total.',
+        'Prise en charge du téléversement unique ou en lot. Pour ConvergedRAG en local : 1 Go max par téléversement, jusqu’à 32 fichiers. Pour demo.ragflow.io : 10 Mo max par fichier uploadDescription128 fichiers au total.',
       chunk: 'Segment',
       bulk: 'En masse',
       cancel: 'Annuler',
       rerankModel: 'Modèle de réordonnancement',
       rerankPlaceholder: 'Veuillez sélectionner',
-      rerankTip: `Optionnel. Si vide, RAGFlow utilisera une combinaison de similarités pondérées. Un modèle de réordonnancement remplace la similarité vectorielle. Attention, cela augmente le temps de réponse. Pour un modèle local, utilisez docker-compose-gpu.yml.`,
+      rerankTip: `Optionnel. Si vide, ConvergedRAG utilisera une combinaison de similarités pondérées. Un modèle de réordonnancement remplace la similarité vectorielle. Attention, cela augmente le temps de réponse. Pour un modèle local, utilisez docker-compose-gpu.yml.`,
       topK: 'Top-K',
       topKTip: 'Nombre de segments à envoyer au modèle de réordonnancement.',
       delimiter: 'Délimiteur de texte',
@@ -355,7 +355,7 @@ export default {
       topN: 'Top N',
       topNTip: `Tous les segments avec un score de similarité supérieur au 'seuil de similarité' ne seront pas forcément envoyés au LLM. Cela sélectionne les 'Top N' segments parmi ceux récupérés.`,
       variable: 'Variable',
-      variableTip: `Utilisé avec les API de gestion d’assistant de chat de RAGFlow, les variables aident à développer des stratégies de prompt système plus flexibles. Les variables définies seront utilisées dans le 'Prompt système' comme partie des prompts pour le LLM. {knowledge
+      variableTip: `Utilisé avec les API de gestion d’assistant de chat de ConvergedRAG, les variables aident à développer des stratégies de prompt système plus flexibles. Les variables définies seront utilisées dans le 'Prompt système' comme partie des prompts pour le LLM. {knowledge
       } est une variable spéciale réservée représentant les segments récupérés des bases de connaissances spécifiées. Toutes les variables doivent être entourées d’accolades {} dans le 'Prompt système'. Voir https: //ragflow.io/docs/dev/set_chat_variables pour plus de détails.`,
       add: 'Ajouter',
       key: 'Clé',
@@ -422,7 +422,7 @@ export default {
       extensionTitle: 'Extension Chrome',
       tokenError: 'Veuillez d’abord créer une clé API.',
       betaError:
-        'Veuillez d’abord obtenir une clé API RAGFlow depuis la page Paramètres système.',
+        'Veuillez d’abord obtenir une clé API ConvergedRAG depuis la page Paramètres système.',
       searching: 'Recherche en cours...',
       parsing: 'Analyse en cours',
       uploading: 'Téléversement en cours',
@@ -522,6 +522,10 @@ export default {
       baseUrl: 'URL de base',
       baseUrlTip:
         "Si votre clé API provient d'OpenAI, ignorez ceci. Tout autre fournisseur intermédiaire fournira cette URL de base avec la clé API.",
+      tongyiBaseUrlTip:
+        'Pour les utilisateurs chinois, pas besoin de remplir ou utiliser https://dashscope.aliyuncs.com/compatible-mode/v1. Pour les utilisateurs internationaux, utilisez https://dashscope-intl.aliyuncs.com/compatible-mode/v1',
+      tongyiBaseUrlPlaceholder:
+        "(Utilisateurs internationaux uniquement, veuillez consulter l'astuce)",
       modify: 'Modifier',
       systemModelSettings: 'Définir les modèles par défaut',
       chatModel: 'Modèle de chat',
@@ -529,7 +533,7 @@ export default {
         'Le modèle de chat par défaut pour chaque base de connaissances nouvellement créée.',
       embeddingModel: "Modèle d'embedding",
       embeddingModelTip:
-        "Le modèle d'embedding par défaut pour chaque base de connaissances nouvellement créée. Si vous ne trouvez pas de modèle d'embedding dans la liste déroulante, vérifiez si vous utilisez l'édition RAGFlow slim (qui n'inclut pas les modèles d'embedding) ou consultez https://ragflow.io/docs/dev/supported_models pour voir si votre fournisseur de modèle supporte ce modèle.",
+        "Le modèle d'embedding par défaut pour chaque base de connaissances nouvellement créée. Si vous ne trouvez pas de modèle d'embedding dans la liste déroulante, vérifiez si vous utilisez l'édition ConvergedRAG slim (qui n'inclut pas les modèles d'embedding) ou consultez https://ragflow.io/docs/dev/supported_models pour voir si votre fournisseur de modèle supporte ce modèle.",
       img2txtModel: 'Modèle Img2txt',
       img2txtModelTip:
         'Le modèle img2txt par défaut pour chaque base de connaissances nouvellement créée. Il décrit une image ou une vidéo. Si vous ne trouvez pas de modèle dans la liste déroulante, consultez https://ragflow.io/docs/dev/supported_models pour voir si votre fournisseur le supporte.',
@@ -695,7 +699,7 @@ export default {
       directory: 'Répertoire',
       uploadTitle: 'Glissez-déposez votre fichier ici pour téléverser',
       uploadDescription:
-        'Prise en charge du téléversement de fichiers uniques ou en lot. Pour un déploiement local de RAGFlow : la taille totale des fichiers par téléversement est limitée à 1 Go, avec un maximum de 32 fichiers par lot. Il n’y a pas de limite sur le nombre total de fichiers par compte. Pour demo.ragflow.io, la taille totale des fichiers par téléversement est limitée à 10 Mo, chaque fichier ne devant pas dépasser 10 Mo, avec un maximum de 128 fichiers par compte.',
+        'Prise en charge du téléversement de fichiers uniques ou en lot. Pour un déploiement local de ConvergedRAG : la taille totale des fichiers par téléversement est limitée à 1 Go, avec un maximum de 32 fichiers par lot. Il n’y a pas de limite sur le nombre total de fichiers par compte. Pour demo.ragflow.io, la taille totale des fichiers par téléversement est limitée à 10 Mo, chaque fichier ne devant pas dépasser 10 Mo, avec un maximum de 128 fichiers par compte.',
       local: 'Téléversements locaux',
       s3: 'Téléversements S3',
       preview: 'Aperçu',
@@ -781,6 +785,9 @@ export default {
       duckDuckGo: 'DuckDuckGo',
       duckDuckGoDescription:
         'Un composant qui recherche sur duckduckgo.com, vous permettant de spécifier le nombre de résultats avec TopN. Il complète les bases de connaissances existantes.',
+      searXNG: 'SearXNG',
+      searXNGDescription:
+        "Un composant qui effectue des recherches via la URL de l'instance de SearXNG que vous fournissez. Spécifiez TopN et l'URL de l'instance.",
       channel: 'Canal',
       channelTip:
         "Effectuer une recherche de texte ou d'actualités sur l'entrée du composant",
@@ -1089,6 +1096,8 @@ export default {
       cleanHtml: 'Nettoyer le HTML',
       cleanHtmlTip:
         'Si la réponse est au format HTML et que seul le contenu principal est souhaité, activez cette option.',
+      invalidUrl:
+        'Doit être une URL valide ou une URL avec des espaces réservés de variables au format {nom_variable} ou {composant@variable}',
       reference: 'Référence',
       input: 'Entrée',
       output: 'Sortie',
@@ -1145,7 +1154,6 @@ export default {
       },
       addVariable: 'Ajouter une variable',
       variableSettings: 'Paramètres des variables',
-      globalVariables: 'Variables globales',
       systemPrompt: 'Invite système',
       addCategory: 'Ajouter une catégorie',
       categoryName: 'Nom de la catégorie',

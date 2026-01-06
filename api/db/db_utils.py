@@ -19,8 +19,7 @@ from functools import reduce
 from playhouse.pool import PooledMySQLDatabase
 from api.db.oracle_ext import PooledOracleDatabase
 
-
-from api.utils import current_timestamp, timestamp_to_date
+from common.time_utils import current_timestamp, timestamp_to_date
 
 from api.db.db_models import DB, DataBaseModel
 

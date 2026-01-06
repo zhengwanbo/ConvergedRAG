@@ -44,9 +44,14 @@ export interface IInputData {
   inputs: Record<string, BeginQuery>;
   tips: string;
 }
-
+export interface IAttachment {
+  doc_id: string;
+  format: string;
+  file_name: string;
+}
 export interface IMessageData {
   content: string;
+  outputs: any;
   start_to_think?: boolean;
   end_to_think?: boolean;
 }
@@ -126,29 +131,36 @@ export const useSendMessageBySSE = (url: string = api.completeConversation) => {
           .getReader();
 
         while (true) {
-          const x = await reader?.read();
-          if (x) {
-            const { done, value } = x;
-            if (done) {
-              console.info('done');
-              resetAnswerList();
-              break;
-            }
-            try {
-              const val = JSON.parse(value?.data || '');
-
-              console.info('data:', val);
-              if (val.code === 500) {
-                message.error(val.message);
+          try {
+            const x = await reader?.read();
+            if (x) {
+              const { done, value } = x;
+              if (done) {
+                console.info('done');
+                resetAnswerList();
+                break;
               }
+              try {
+                const val = JSON.parse(value?.data || '');
 
-              setAnswerList((list) => {
-                const nextList = [...list];
-                nextList.push(val);
-                return nextList;
-              });
-            } catch (e) {
-              console.warn(e);
+                console.info('data:', val);
+                if (val.code === 500) {
+                  message.error(val.message);
+                }
+
+                setAnswerList((list) => {
+                  const nextList = [...list];
+                  nextList.push(val);
+                  return nextList;
+                });
+              } catch (e) {
+                console.warn(e);
+              }
+            }
+          } catch (e) {
+            if (e instanceof DOMException && e.name === 'AbortError') {
+              console.log('Request was aborted by user or logic.');
+              break;
             }
           }
         }

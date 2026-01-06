@@ -14,14 +14,13 @@
 #  limitations under the License.
 #
 import logging
-import base64
 import json
 import os
 import time
 import uuid
 from copy import deepcopy
 
-from api.db import LLMType, UserTenantRole
+from api.db import UserTenantRole
 from api.db.db_models import init_database_tables as init_web_db, LLMFactories, LLM, TenantLLM
 from api.db.services import UserService
 from api.db.services.canvas_service import CanvasTemplateService
@@ -30,13 +29,10 @@ from api.db.services.knowledgebase_service import KnowledgebaseService
 from api.db.services.tenant_llm_service import LLMFactoriesService, TenantLLMService
 from api.db.services.llm_service import LLMService, LLMBundle, get_init_tenant_llm
 from api.db.services.user_service import TenantService, UserTenantService
-from api import settings
-from api.utils.file_utils import get_project_base_directory
-
-
-def encode_to_base64(input_string):
-    base64_encoded = base64.b64encode(input_string.encode('utf-8'))
-    return base64_encoded.decode('utf-8')
+from common.constants import LLMType
+from common.file_utils import get_project_base_directory
+from common import settings
+from api.common.base64 import encode_to_base64
 
 
 def init_superuser():
@@ -93,13 +89,7 @@ def init_superuser():
 
 
 def init_llm_factory():
-    try:
-        LLMService.filter_delete([(LLM.fid == "MiniMax" or LLM.fid == "Minimax")])
-        LLMService.filter_delete([(LLM.fid == "cohere")])
-        LLMFactoriesService.filter_delete([LLMFactories.name == "cohere"])
-    except Exception:
-        pass
-
+    LLMFactoriesService.filter_delete([1 == 1])
     factory_llm_infos = settings.FACTORY_LLM_INFOS
     for factory_llm_info in factory_llm_infos:
         info = deepcopy(factory_llm_info)
@@ -125,8 +115,8 @@ def init_llm_factory():
     LLMService.filter_delete([LLMService.model.fid == "QAnything"])
     TenantLLMService.filter_update([TenantLLMService.model.llm_factory == "QAnything"], {"llm_factory": "Youdao"})
     TenantLLMService.filter_update([TenantLLMService.model.llm_factory == "cohere"], {"llm_factory": "Cohere"})
-    #TenantService.filter_update([1 == 1], {
-    #    "parser_ids": "naive:General,qa:Q&A,resume:Resume,manual:Manual,table:Table,paper:Paper,book:Book,laws:Laws,presentation:Presentation,picture:Picture,one:One,audio:Audio,email:Email,tag:Tag"})
+    TenantService.filter_update([1 == 1], {
+        "parser_ids": "naive:General,qa:Q&A,resume:Resume,manual:Manual,table:Table,paper:Paper,book:Book,laws:Laws,presentation:Presentation,picture:Picture,one:One,audio:Audio,email:Email,tag:Tag"})
     ## insert openai two embedding models to the current openai user.
     # print("Start to insert 2 OpenAI embedding models...")
     tenant_ids = set([row["tenant_id"] for row in TenantLLMService.get_openai_models()])
@@ -144,8 +134,9 @@ def init_llm_factory():
             except Exception:
                 pass
             break
+    doc_count = DocumentService.get_all_kb_doc_count()
     for kb_id in KnowledgebaseService.get_all_ids():
-        KnowledgebaseService.update_document_number_in_init(kb_id=kb_id, doc_num=DocumentService.get_kb_doc_count(kb_id))
+        KnowledgebaseService.update_document_number_in_init(kb_id=kb_id, doc_num=doc_count.get(kb_id, 0))
 
 
 

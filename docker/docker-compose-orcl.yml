@@ -1,0 +1,38 @@
+services:
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-07-23T15-54-02Z
+    container_name: ragflow-minio
+    command: server --console-address ":9001" /data
+    ports:
+      - 9002:9000
+      - 9003:9001
+    environment:
+      - MINIO_ROOT_USER=rag_flow
+      - MINIO_ROOT_PASSWORD=infini_rag_flow
+      - TZ='Asia/Shanghai'
+    volumes:
+      - minio_data:/data
+    networks:
+      - mynet
+
+  redis:
+    image: redis:latest
+    container_name: ragflow-redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --maxmemory 128mb --maxmemory-policy allkeys-lru
+    env_file: .env
+    ports:
+      - ${REDIS_PORT}:6379
+    volumes:
+      - redis_data:/data
+    networks:
+      - mynet
+
+volumes:
+  minio_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  mynet:
+    driver: bridge

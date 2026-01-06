@@ -20,8 +20,9 @@ from botocore.exceptions import ClientError
 from botocore.config import Config
 import time
 from io import BytesIO
-from rag.utils import singleton
-from rag import settings
+from common.decorator import singleton
+from common import settings
+
 
 @singleton
 class RAGFlowS3:
@@ -80,10 +81,13 @@ class RAGFlowS3:
                 s3_params['region_name'] = self.region_name
             if self.endpoint_url:
                 s3_params['endpoint_url'] = self.endpoint_url
+            
+            # Configure signature_version and addressing_style through Config object
             if self.signature_version:
-                s3_params['signature_version'] = self.signature_version
+                config_kwargs['signature_version'] = self.signature_version
             if self.addressing_style:
-                s3_params['addressing_style'] = self.addressing_style
+                config_kwargs['s3'] = {'addressing_style': self.addressing_style}
+            
             if config_kwargs:
                 s3_params['config'] = Config(**config_kwargs)
             
@@ -160,7 +164,7 @@ class RAGFlowS3:
                 logging.exception(f"fail get {bucket}/{fnm}")
                 self.__open__()
                 time.sleep(1)
-        return
+        return None
 
     @use_prefix_path
     @use_default_bucket
@@ -189,7 +193,7 @@ class RAGFlowS3:
                 logging.exception(f"fail get url {bucket}/{fnm}")
                 self.__open__()
                 time.sleep(1)
-        return
+        return None
 
     @use_default_bucket
     def rm_bucket(self, bucket, *args, **kwargs):

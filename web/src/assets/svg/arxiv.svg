@@ -4,14 +4,14 @@
     <defs>
         <rect id="path-1" x="0" y="0" width="160" height="160"></rect>
     </defs>
-    <g id="RAGFlow" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+    <g id="ConvergedRAG" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
         <g id="tool-logo" transform="translate(-1040, -81)">
             <g id="arxiv" transform="translate(1040, 81)">
                 <mask id="mask-2" fill="white">
                     <use xlink:href="#path-1"></use>
                 </mask>
                 <use id="矩形" fill-opacity="0" fill="#D8D8D8" xlink:href="#path-1"></use>
-                <g id="RAGFlow" mask="url(#mask-2)" fill-rule="nonzero">
+                <g id="ConvergedRAG" mask="url(#mask-2)" fill-rule="nonzero">
                     <g transform="translate(17, 17)">
                         <path
                             d="M0,92.399959 L0,33.600041 C0,15.0432508 15.0432508,0 33.600041,0 L92.399959,0 C110.956749,0 126,15.0432508 126,33.600041 L126,92.399959 C126,110.956749 110.956749,126 92.399959,126 L33.600041,126 C15.0432508,126 0,110.956749 0,92.399959 Z"
