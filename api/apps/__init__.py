@@ -107,6 +107,7 @@ def _load_user():
     authorization = request.headers.get("Authorization")
     g.user = None
     if not authorization:
+        logging.debug("No authorization header provided")
         return
 
     try:
@@ -121,17 +122,42 @@ def _load_user():
             logging.warning(f"Authentication attempt with invalid token format: {len(access_token)} chars")
             return None
 
-        user = UserService.query(
-            access_token=access_token, status=StatusEnum.VALID.value
-        )
-        if user:
-            if not user[0].access_token or not user[0].access_token.strip():
-                logging.warning(f"User {user[0].email} has empty access_token in database")
-                return None
-            g.user = user[0]
-            return user[0]
+        logging.debug(f"Attempting to load user with access_token: {access_token[:8]}...")
+        
+        # 添加重试机制
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                user = UserService.query(
+                    access_token=access_token, status=StatusEnum.VALID.value
+                )
+                if user:
+                    if not user[0].access_token or not user[0].access_token.strip():
+                        logging.warning(f"User {user[0].email} has empty access_token in database")
+                        return None
+                    g.user = user[0]
+                    logging.debug(f"User loaded successfully: {user[0].email}")
+                    return user[0]
+                else:
+                    logging.debug(f"No user found with access_token: {access_token[:8]}...")
+                    return None
+            except Exception as e:
+                if "not connected to database" in str(e) or "DPY-1001" in str(e):
+                    if attempt < max_retries - 1:
+                        logging.warning(f"Database connection failed (attempt {attempt+1}/{max_retries}), retrying...")
+                        # 等待一段时间后重试
+                        import time
+                        time.sleep(0.5 * (attempt + 1))
+                        continue
+                    else:
+                        logging.error(f"Failed to load user after {max_retries} attempts: {e}")
+                        raise
+                else:
+                    # 其他异常直接抛出
+                    logging.error(f"load_user got exception: {e}", exc_info=True)
+                    raise
     except Exception as e:
-        logging.warning(f"load_user got exception {e}")
+        logging.error(f"load_user got exception: {e}", exc_info=True)
 
 
 current_user = LocalProxy(_load_user)
