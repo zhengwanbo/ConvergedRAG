@@ -42,6 +42,9 @@ export const initialVectorSimilarityWeightValue = {
   vector_similarity_weight: 0.3,
 };
 
+const roundToTwoDecimals = (value: number) =>
+  Math.round((value + Number.EPSILON) * 100) / 100;
+
 export function SimilaritySliderFormField({
   similarityName = 'similarity_threshold',
   vectorSimilarityWeightName = 'vector_similarity_weight',
@@ -68,70 +71,87 @@ export function SimilaritySliderFormField({
         control={form.control}
         name={vectorSimilarityWeightName}
         defaultValue={0}
-        render={({ field }) => (
-          <FormItem
-          // className={cn({ 'flex items-center gap-1 space-y-0': isHorizontal })}
-          >
-            <FormLabel
-              tooltip={
-                isTooltipShown &&
-                t(
+        render={({ field }) => {
+          const vectorValue = roundToTwoDecimals(Number(field.value) || 0);
+          const fullTextValue = roundToTwoDecimals(1 - vectorValue);
+
+          return (
+            <FormItem>
+              <FormLabel
+                tooltip={
+                  isTooltipShown &&
+                  t(
+                    isVector
+                      ? 'vectorSimilarityWeightTip'
+                      : 'keywordSimilarityWeightTip',
+                  )
+                }
+              >
+                {t(
                   isVector
-                    ? 'vectorSimilarityWeightTip'
-                    : 'keywordSimilarityWeightTip',
-                )
-              }
-            >
-              {t(
-                isVector ? 'vectorSimilarityWeight' : 'keywordSimilarityWeight',
-              )}
-            </FormLabel>
-            <div className={cn('flex items-end gap-4 justify-between')}>
-              <FormControl>
-                <div className="flex flex-col flex-1 gap-2">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-1">
-                      <label className="italic text-xs text-text-secondary">
-                        vector
-                      </label>
-                      <span className="bg-bg-card rounded-md p-1 w-10 text-center text-xs">
-                        {field.value.toFixed(2)}
-                      </span>
+                    ? 'vectorSimilarityWeight'
+                    : 'keywordSimilarityWeight',
+                )}
+              </FormLabel>
+              <div className={cn('flex items-end gap-4 justify-between')}>
+                <FormControl>
+                  <div className="flex flex-col flex-1 gap-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-1">
+                        <label className="italic text-xs text-text-secondary">
+                          vector
+                        </label>
+                        <span className="bg-bg-card rounded-md p-1 w-10 text-center text-xs">
+                          {vectorValue.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex  items-center gap-1">
+                        <label className="italic text-xs text-text-secondary">
+                          full-text
+                        </label>
+                        <span className="bg-bg-card rounded-md p-1 w-10 text-center text-xs">
+                          {fullTextValue.toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex  items-center gap-1">
-                      <label className="italic text-xs text-text-secondary">
-                        full-text
-                      </label>
-                      <span className="bg-bg-card rounded-md p-1 w-10 text-center text-xs">
-                        {(1 - field.value).toFixed(2)}
-                      </span>
-                    </div>
+                    <SingleFormSlider
+                      {...field}
+                      value={vectorValue}
+                      onChange={(value) => {
+                        field.onChange(roundToTwoDecimals(value));
+                      }}
+                      max={1}
+                      step={0.01}
+                      min={0}
+                    ></SingleFormSlider>
                   </div>
-                  <SingleFormSlider
-                    {...field}
+                </FormControl>
+                <FormControl>
+                  <NumberInput
+                    className={cn(
+                      'h-6 w-10 p-0 text-center bg-bg-input border-border-button border text-text-secondary',
+                      '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
+                      numberInputClassName,
+                    )}
                     max={1}
-                    step={0.01}
                     min={0}
-                  ></SingleFormSlider>
-                </div>
-              </FormControl>
-              <FormControl>
-                <NumberInput
-                  className={cn(
-                    'h-6 w-10 p-0 text-center bg-bg-input border-border-button border text-text-secondary',
-                    '[appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none',
-                    numberInputClassName,
-                  )}
-                  max={1}
-                  min={0}
-                  step={0.01}
-                  {...field}
-                ></NumberInput>
-              </FormControl>
-            </div>
-            <FormMessage />
-          </FormItem>
-        )}
+                    step={0.01}
+                    {...field}
+                    value={vectorValue.toFixed(2)}
+                    onChange={(value) => {
+                      field.onChange(
+                        roundToTwoDecimals(
+                          Math.max(0, Math.min(1, Number(value) || 0)),
+                        ),
+                      );
+                    }}
+                  ></NumberInput>
+                </FormControl>
+              </div>
+              <FormMessage />
+            </FormItem>
+          );
+        }}
       />
     </>
   );

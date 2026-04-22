@@ -40,7 +40,10 @@ export function useChatSettingSchema() {
 
   const formSchema = z.object({
     name: z.string().min(1, { message: t('assistantNameMessage') }),
-    icon: z.string(),
+    icon: z
+      .string()
+      .nullish()
+      .transform((value) => value ?? ''),
     description: z.string().optional(),
     kb_ids: z.array(z.string()).min(0, {
       message: t('knowledgeBasesMessage'),

@@ -62,11 +62,17 @@ interface SearchSettingProps {
   data: ISearchAppDetailProps;
 }
 
+const roundToTwoDecimals = (value: number) =>
+  Math.round((value + Number.EPSILON) * 100) / 100;
+
 const SearchSettingFormSchema = z
   .object({
     search_id: z.string().optional(),
     name: z.string().min(1, 'Name is required'),
-    avatar: z.string().optional(),
+    avatar: z
+      .string()
+      .nullish()
+      .transform((value) => value ?? ''),
     description: z.string().optional(),
     search_config: z.object({
       kb_ids: z.array(z.string()).min(1, 'At least one dataset is required'),
@@ -74,7 +80,7 @@ const SearchSettingFormSchema = z
       web_search: z.boolean(),
       similarity_threshold: z.number(),
       use_kg: z.boolean(),
-      rerank_id: z.string(),
+      rerank_id: z.string().optional(),
       use_rerank: z.boolean(),
       top_k: z.number(),
       summary: z.boolean(),
@@ -85,14 +91,6 @@ const SearchSettingFormSchema = z
     }),
   })
   .superRefine((data, ctx) => {
-    if (data.search_config.use_rerank && !data.search_config.rerank_id) {
-      ctx.addIssue({
-        path: ['search_config', 'rerank_id'],
-        message: 'Rerank model is required when rerank is enabled',
-        code: z.ZodIssueCode.custom,
-      });
-    }
-
     if (data.search_config.summary && !data.search_config.llm_setting?.llm_id) {
       ctx.addIssue({
         path: ['search_config', 'llm_setting', 'llm_id'],
@@ -127,10 +125,9 @@ const SearchSetting: React.FC<SearchSettingProps> = ({
       description: data?.description || descriptionDefaultValue,
       search_config: {
         kb_ids: search_config?.kb_ids || [],
-        vector_similarity_weight:
-          (search_config?.vector_similarity_weight
-            ? 1 - search_config?.vector_similarity_weight
-            : 0.3) || 0.3,
+        vector_similarity_weight: roundToTwoDecimals(
+          1 - (search_config?.vector_similarity_weight ?? 0.7),
+        ),
         web_search: search_config?.web_search || false,
         doc_ids: [],
         similarity_threshold: search_config?.similarity_threshold || 0.2,
@@ -272,7 +269,7 @@ const SearchSetting: React.FC<SearchSettingProps> = ({
           ...other_config,
           chat_id: llm_setting.llm_id,
           vector_similarity_weight: 1 - vector_similarity_weight,
-          rerank_id: use_rerank ? rerank_id : '',
+          rerank_id: use_rerank ? rerank_id || '' : '',
           llm_setting: { ...llmSetting },
         },
         tenant_id: systemSetting.tenant_id,
@@ -437,16 +434,13 @@ const SearchSetting: React.FC<SearchSettingProps> = ({
                   // rules={{ required: 'Model is required' }}
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>
-                        <span className="text-destructive mr-1"> *</span>
-                        {t('chat.model')}
-                      </FormLabel>
+                      <FormLabel>{t('chat.model')}</FormLabel>
                       <FormControl>
                         <RAGFlowSelect
                           {...field}
                           options={rerankModelOptions}
+                          allowClear
                           triggerClassName={'bg-bg-input'}
-                          // disabled={disabled}
                           placeholder={t('chat.model')}
                         />
                       </FormControl>
