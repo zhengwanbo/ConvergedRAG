@@ -410,12 +410,17 @@ class RedisDB:
     def get_unacked_iterator(self, queue_names: list[str], group_name, consumer_name):
         try:
             for queue_name in queue_names:
+                group_info = None
                 try:
                     group_info = self.REDIS.xinfo_groups(queue_name)
                 except Exception as e:
                     if str(e) == 'no such key':
                         logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} doesn't exist")
                         continue
+                    logging.warning(
+                        f"RedisDB.get_unacked_iterator queue {queue_name} xinfo_groups failed: {e}"
+                    )
+                    continue
                 if not any(gi["name"] == group_name for gi in group_info):
                     logging.warning(f"RedisDB.get_unacked_iterator queue {queue_name} group {group_name} doesn't exist")
                     continue

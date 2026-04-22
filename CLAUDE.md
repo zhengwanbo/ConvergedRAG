@@ -104,7 +104,7 @@ docker build --platform linux/amd64 -f Dockerfile -t infiniflow/ragflow:nightly 
 ## Database Engines
 
 RAGFlow supports switching between Elasticsearch (default) and Infinity:
-- Set `DOC_ENGINE=infinity` in `docker/.env` to use Infinity
+- Set `DOC_ENGINE=oracle` in `docker/.env` to use Infinity
 - Requires container restart: `docker compose down -v && docker compose up -d`
 
 ## Development Environment Requirements

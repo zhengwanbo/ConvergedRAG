@@ -24,6 +24,7 @@ from rag.utils.redis_conn import REDIS_CONN
 from rag.utils.es_conn import ESConnection
 from rag.utils.infinity_conn import InfinityConnection
 from rag.utils.ob_conn import OBConnection
+from rag.utils.oracle_conn import OracleConnection
 from common import settings
 
 
@@ -133,6 +134,24 @@ def get_oceanbase_status():
         }
 
 
+def get_oracle_status():
+    # 定制开发：Wanbo 20250415
+    doc_engine = os.getenv('DOC_ENGINE', 'elasticsearch')
+    if doc_engine != 'oracle':
+        raise Exception("Oracle is not in use.")
+    try:
+        oracle_conn = OracleConnection()
+        return {
+            "status": "alive",
+            "message": oracle_conn.health(),
+        }
+    except Exception as e:
+        return {
+            "status": "timeout",
+            "message": f"error: {str(e)}",
+        }
+
+
 def check_oceanbase_health() -> dict:
     """
     Check OceanBase health status with comprehensive metrics.
@@ -218,6 +237,8 @@ def check_oceanbase_health() -> dict:
 
 def get_mysql_status():
     try:
+        if settings.DATABASE_TYPE.lower() != "mysql":
+            return get_meta_db_status()
         cursor = DB.execute_sql("SHOW PROCESSLIST;")
         res_rows = cursor.fetchall()
         headers = ['id', 'user', 'host', 'db', 'command', 'time', 'state', 'info']
@@ -230,6 +251,29 @@ def get_mysql_status():
         return {
             "status": "timeout",
             "message": f"error: {str(e)}",
+        }
+
+
+def get_meta_db_status():
+    db_type = settings.DATABASE_TYPE.lower()
+    try:
+        cursor = DB.execute_sql("SELECT 1")
+        row = cursor.fetchone()
+        cursor.close()
+        return {
+            "status": "alive",
+            "message": {
+                "database": db_type,
+                "probe": row[0] if row else None,
+            },
+        }
+    except Exception as e:
+        return {
+            "status": "timeout",
+            "message": {
+                "database": db_type,
+                "error": str(e),
+            },
         }
 
 

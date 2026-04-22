@@ -151,8 +151,8 @@ export const useTestChunkRetrieval = (
       const { data } = await retrievalTestFunc({
         ...values,
         kb_id: values.kb_id ?? knowledgeBaseId,
-        page,
-        size: pageSize,
+        page: values.page ?? page,
+        size: values.size ?? pageSize,
         tenant_id: tenantId,
       });
       if (data.code === 0) {
@@ -203,8 +203,8 @@ export const useTestChunkAllRetrieval = (
         ...values,
         kb_id: values.kb_id ?? knowledgeBaseId,
         doc_ids: [],
-        page,
-        size: pageSize,
+        page: values.page ?? page,
+        size: values.size ?? pageSize,
         tenant_id: tenantId,
       });
       if (data.code === 0) {

@@ -13,32 +13,34 @@ mysql:
   max_connections: 900
   stale_timeout: 300
   max_allowed_packet: 1073741824
+oracle: # 定制开发：Wanbo 20250415
+  name: 'rag_flow'
+  user: 'conrag'
+  password: 'conrag'
+  db: 'freepdb1'
+  host: 'localhost'
+  port: 1521
+  max_connections: 100
+  stale_timeout: 30
+orclvector: # 定制开发：Wanbo 20250415
+  name: 'rag_vector'
+  user: 'ragvector'
+  password: 'ragvector'
+  db: 'freepdb1'
+  host: 'localhost'
+  port: 1521
+  max_connections: 100
+  stale_timeout: 30
 minio:
   user: 'rag_flow'
   password: 'infini_rag_flow'
   host: 'localhost:9000'
   bucket: ''
   prefix_path: ''
-es:
-  hosts: 'http://localhost:1200'
-  username: 'elastic'
-  password: 'infini_rag_flow'
 os:
   hosts: 'http://localhost:1201'
   username: 'admin'
   password: 'infini_rag_flow_OS_01'
-infinity:
-  uri: 'localhost:23817'
-  postgres_port: 5432
-  db_name: 'default_db'
-oceanbase:
-  scheme: 'oceanbase' # set 'mysql' to create connection using mysql config
-  config:
-    db_name: 'test'
-    user: 'root@ragflow'
-    password: 'infini_rag_flow'
-    host: 'localhost'
-    port: 2881
 redis:
   db: 1
   username: ''
@@ -47,10 +49,23 @@ redis:
 task_executor:
   message_queue_type: 'redis'
 user_default_llm:
-  default_models:
-    embedding_model:
-      api_key: 'xxx'
-      base_url: 'http://localhost:6380'
+   factory: 'BAAI'
+   api_key: '1234'
+   base_url: 'http://localhost:11434'
+   default_models:
+     chat_model:
+       name: 'qwen3.5'
+       factory: 'qwen'
+       api_key: '1234'
+       base_url: 'http://localhost:11424'
+     embedding_model:
+       api_key: '1'
+       name: 'bge-m3'
+       base_url: 'http://localhost:11434'
+     rerank_model: 'bge-reranker-v2'
+     asr_model:
+       model: 'whisper-large-v3' # alias of name
+     image2text_model: ''
 # postgres:
 #   name: 'rag_flow'
 #   user: 'rag_flow'

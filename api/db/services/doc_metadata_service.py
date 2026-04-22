@@ -37,6 +37,11 @@ class DocMetadataService:
     """Service for managing document metadata in ES/Infinity"""
 
     @staticmethod
+    def _supports_native_es_metadata_ops() -> bool:
+        # 定制开发：Wanbo 20250415
+        return settings.DOC_ENGINE in {"elasticsearch", "opensearch"} and hasattr(settings.docStoreConn, "es")
+
+    @staticmethod
     def _get_doc_meta_index_name(tenant_id: str) -> str:
         """
         Get the index name for document metadata.
@@ -313,7 +318,7 @@ class DocMetadataService:
                 logging.error(f"Failed to insert metadata for document {doc_id}: {result}")
                 return False
             # Force ES refresh to make metadata immediately available for search
-            if not settings.DOC_ENGINE_INFINITY:
+            if cls._supports_native_es_metadata_ops():
                 try:
                     settings.docStoreConn.es.indices.refresh(index=index_name)
                     logging.debug(f"Refreshed metadata index: {index_name}")
@@ -366,7 +371,7 @@ class DocMetadataService:
             logging.debug(f"[update_document_metadata] Updating doc_id: {doc_id}, kb_id: {kb_id}, meta_fields: {processed_meta}")
 
             # For Elasticsearch, use efficient partial update
-            if not settings.DOC_ENGINE_INFINITY:
+            if cls._supports_native_es_metadata_ops():
                 try:
                     # Use ES partial update API - much more efficient than delete+insert
                     settings.docStoreConn.es.update(
@@ -497,10 +502,13 @@ class DocMetadataService:
             # Use ES count API for accurate count
             # Note: No need to refresh since delete operation already uses refresh=True
             try:
-                count_response = settings.docStoreConn.es.count(index=index_name)
-                total_count = count_response['count']
-                logging.debug(f"[DROP EMPTY TABLE] ES count API result: {total_count} documents")
-                is_empty = (total_count == 0)
+                if cls._supports_native_es_metadata_ops():
+                    count_response = settings.docStoreConn.es.count(index=index_name)
+                    total_count = count_response['count']
+                    logging.debug(f"[DROP EMPTY TABLE] ES count API result: {total_count} documents")
+                    is_empty = (total_count == 0)
+                else:
+                    raise RuntimeError("Doc engine does not support native ES count API")
             except Exception as e:
                 logging.warning(f"[DROP EMPTY TABLE] Count API failed, falling back to search: {e}")
                 # Fallback to search if count fails

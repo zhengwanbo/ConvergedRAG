@@ -458,7 +458,8 @@ def chunk(filename, binary=None, from_page=0, to_page=10000000000, lang="Chinese
                      range(len(clmns))]
         # For Infinity/OceanBase: Use original column names as keys since they're stored in chunk_data JSON
         # For ES/OS: Use full field names with type suffixes (e.g., url_kwd, body_tks)
-        if settings.DOC_ENGINE_INFINITY or settings.DOC_ENGINE_OCEANBASE:
+        if settings.DOC_ENGINE_INFINITY or settings.DOC_ENGINE_OCEANBASE or getattr(settings, "DOC_ENGINE_ORACLE", False):
+            # 定制开发：Wanbo 20250415
             # For Infinity/OceanBase: key = original column name, value = display name
             field_map = {py_clmns[i].lower(): str(clmns[i]).replace("_", " ") for i in range(len(clmns))}
         else:
@@ -481,7 +482,7 @@ def chunk(filename, binary=None, from_page=0, to_page=10000000000, lang="Chinese
                     continue
                 # For Infinity/OceanBase: Store in chunk_data JSON column
                 # For Elasticsearch/OpenSearch: Store as individual fields with type suffixes
-                if settings.DOC_ENGINE_INFINITY or settings.DOC_ENGINE_OCEANBASE:
+                if settings.DOC_ENGINE_INFINITY or settings.DOC_ENGINE_OCEANBASE or getattr(settings, "DOC_ENGINE_ORACLE", False):
                     data_json[str(clmns[j])] = row[clmns[j]]
                 else:
                     fld = clmns_map[j][0]
@@ -490,7 +491,7 @@ def chunk(filename, binary=None, from_page=0, to_page=10000000000, lang="Chinese
             if not row_fields:
                 continue
             # Add the data JSON field to the document (for Infinity/OceanBase)
-            if settings.DOC_ENGINE_INFINITY or settings.DOC_ENGINE_OCEANBASE:
+            if settings.DOC_ENGINE_INFINITY or settings.DOC_ENGINE_OCEANBASE or getattr(settings, "DOC_ENGINE_ORACLE", False):
                 d["chunk_data"] = data_json
             # Format as a structured text for better LLM comprehension
             # Format each field as "- Field Name: Value" on separate lines

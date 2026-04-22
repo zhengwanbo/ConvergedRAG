@@ -2141,6 +2141,7 @@ export const ExeSQLOptions = [
   'IBM DB2',
   'trino',
   'oceanbase',
+  'oracle', // 定制开发：Wanbo 20250415
 ].map((x) => ({
   label: upperFirst(x),
   value: x,

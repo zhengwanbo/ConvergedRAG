@@ -107,4 +107,3 @@ docker compose -f docker-compose.yml up -d
   pre-commit install
   pre-commit run --all-files
   ```
-

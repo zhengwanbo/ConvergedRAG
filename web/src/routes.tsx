@@ -349,50 +349,60 @@ const routeConfigOptions = [
     Component: () => import('@/pages/chunk'),
   },
   {
-    path: '/user-setting',
-    Component: () => import('@/pages/user-setting'),
+    path: Routes.UserSetting,
     layout: false,
+    Component: () => import('@/layouts/next'),
     children: [
       {
-        path: '/user-setting',
-        element: <Navigate to={`/user-setting${Routes.DataSource}`} replace />,
-      },
-      {
-        path: '/user-setting/profile',
-        Component: () => import('@/pages/user-setting/profile'),
-      },
-      {
-        path: '/user-setting/locale',
-        Component: () => import('@/pages/user-setting/setting-locale'),
-      },
-      {
-        path: '/user-setting/model',
-        Component: () => import('@/pages/user-setting/setting-model'),
-      },
-      {
-        path: '/user-setting/team',
-        Component: () => import('@/pages/user-setting/setting-team'),
-      },
-      {
-        path: `/user-setting${Routes.Api}`,
-        Component: () => import('@/pages/user-setting/setting-api'),
-      },
-      {
-        path: `/user-setting${Routes.Mcp}`,
-        Component: () => import('@/pages/user-setting/mcp'),
-      },
-      {
-        path: `/user-setting${Routes.DataSource}`,
-        Component: () => import('@/pages/user-setting/data-source'),
+        path: '',
+        Component: () => import('@/pages/user-setting'),
+        children: [
+          {
+            path: '',
+            element: (
+              <Navigate to={`/user-setting${Routes.DataSource}`} replace />
+            ),
+          },
+          {
+            path: 'profile',
+            Component: () => import('@/pages/user-setting/profile'),
+          },
+          {
+            path: 'locale',
+            Component: () => import('@/pages/user-setting/setting-locale'),
+          },
+          {
+            path: 'model',
+            Component: () => import('@/pages/user-setting/setting-model'),
+          },
+          {
+            path: 'team',
+            Component: () => import('@/pages/user-setting/setting-team'),
+          },
+          {
+            path: 'manage-users',
+            Component: () => import('@/pages/user-setting/manage-users'),
+          },
+          {
+            path: 'api',
+            Component: () => import('@/pages/user-setting/setting-api'),
+          },
+          {
+            path: 'mcp',
+            Component: () => import('@/pages/user-setting/mcp'),
+          },
+          {
+            path: 'data-source',
+            Component: () => import('@/pages/user-setting/data-source'),
+          },
+          {
+            path: 'data-source/data-source-detail-page',
+            Component: () =>
+              import('@/pages/user-setting/data-source/data-source-detail-page'),
+          },
+        ],
       },
     ],
-  },
-  {
-    path: `/user-setting${Routes.DataSource}${Routes.DataSourceDetailPage}`,
-    Component: () =>
-      import('@/pages/user-setting/data-source/data-source-detail-page'),
-
-    layout: false,
   },
   {
     path: Routes.Admin,

@@ -266,65 +266,58 @@ export default {
   runDataflow: `${api_host}/dataflow/run`,
 
   // admin
-  adminLogin: `${ExternalApi}${api_host}/admin/login`,
-  adminLogout: `${ExternalApi}${api_host}/admin/logout`,
-  adminListUsers: `${ExternalApi}${api_host}/admin/users`,
-  adminCreateUser: `${ExternalApi}${api_host}/admin/users`,
-  adminSetSuperuser: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}/admin`,
-  adminGetUserDetails: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}`,
+  adminLogin: `/admin/v1/login`,
+  adminLogout: `/admin/v1/logout`,
+  adminListUsers: `/admin/v1/users`,
+  adminCreateUser: `/admin/v1/users`,
+  adminSetSuperuser: (username: string) => `/admin/v1/users/${username}/admin`,
+  adminGetUserDetails: (username: string) => `/admin/v1/users/${username}`,
   adminUpdateUserStatus: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}/activate`,
+    `/admin/v1/users/${username}/activate`,
   adminUpdateUserPassword: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}/password`,
-  adminDeleteUser: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}`,
+    `/admin/v1/users/${username}/password`,
+  adminDeleteUser: (username: string) => `/admin/v1/users/${username}`,
   adminListUserDatasets: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}/datasets`,
+    `/admin/v1/users/${username}/datasets`,
   adminListUserAgents: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}/agents`,
+    `/admin/v1/users/${username}/agents`,
 
-  adminListServices: `${ExternalApi}${api_host}/admin/services`,
+  adminListServices: `/admin/v1/services`,
   adminShowServiceDetails: (serviceId: string) =>
-    `${ExternalApi}${api_host}/admin/services/${serviceId}`,
+    `/admin/v1/services/${serviceId}`,
 
-  adminListRoles: `${ExternalApi}${api_host}/admin/roles`,
-  adminListRolesWithPermission: `${ExternalApi}${api_host}/admin/roles_with_permission`,
+  adminListRoles: `/admin/v1/roles`,
+  adminListRolesWithPermission: `/admin/v1/roles_with_permission`,
   adminGetRolePermissions: (roleName: string) =>
-    `${ExternalApi}${api_host}/admin/roles/${roleName}/permissions`,
+    `/admin/v1/roles/${roleName}/permissions`,
   adminAssignRolePermissions: (roleName: string) =>
-    `${ExternalApi}${api_host}/admin/roles/${roleName}/permission`,
+    `/admin/v1/roles/${roleName}/permission`,
   adminRevokeRolePermissions: (roleName: string) =>
-    `${ExternalApi}${api_host}/admin/roles/${roleName}/permission`,
-  adminCreateRole: `${ExternalApi}${api_host}/admin/roles`,
-  adminDeleteRole: (roleName: string) =>
-    `${ExternalApi}${api_host}/admin/roles/${roleName}`,
+    `/admin/v1/roles/${roleName}/permission`,
+  adminCreateRole: `/admin/v1/roles`,
+  adminDeleteRole: (roleName: string) => `/admin/v1/roles/${roleName}`,
   adminUpdateRoleDescription: (roleName: string) =>
-    `${ExternalApi}${api_host}/admin/roles/${roleName}`,
+    `/admin/v1/roles/${roleName}`,
 
-  adminUpdateUserRole: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}/role`,
+  adminUpdateUserRole: (username: string) => `/admin/v1/users/${username}/role`,
   adminGetUserPermissions: (username: string) =>
-    `${ExternalApi}${api_host}/admin/users/${username}/permissions`,
+    `/admin/v1/users/${username}/permissions`,
 
-  adminListResources: `${ExternalApi}${api_host}/admin/roles/resource`,
+  adminListResources: `/admin/v1/roles/resource`,
 
-  adminListWhitelist: `${ExternalApi}${api_host}/admin/whitelist`,
-  adminCreateWhitelistEntry: `${ExternalApi}${api_host}/admin/whitelist/add`,
-  adminUpdateWhitelistEntry: (id: number) =>
-    `${ExternalApi}${api_host}/admin/whitelist/${id}`,
-  adminDeleteWhitelistEntry: (email: string) =>
-    `${ExternalApi}${api_host}/admin/whitelist/${email}`,
-  adminImportWhitelist: `${ExternalApi}${api_host}/admin/whitelist/batch`,
+  adminListWhitelist: `/admin/v1/whitelist`,
+  adminCreateWhitelistEntry: `/admin/v1/whitelist/add`,
+  adminUpdateWhitelistEntry: (id: number) => `/admin/v1/whitelist/${id}`,
+  adminDeleteWhitelistEntry: (email: string) => `/admin/v1/whitelist/${email}`,
+  adminImportWhitelist: `/admin/v1/whitelist/batch`,
 
-  adminGetSystemVersion: `${ExternalApi}${api_host}/admin/version`,
+  adminGetSystemVersion: `/admin/v1/version`,
 
   // Sandbox settings
-  adminListSandboxProviders: `${ExternalApi}${api_host}/admin/sandbox/providers`,
+  adminListSandboxProviders: `/admin/v1/sandbox/providers`,
   adminGetSandboxProviderSchema: (providerId: string) =>
-    `${ExternalApi}${api_host}/admin/sandbox/providers/${providerId}/schema`,
-  adminGetSandboxConfig: `${ExternalApi}${api_host}/admin/sandbox/config`,
-  adminSetSandboxConfig: `${ExternalApi}${api_host}/admin/sandbox/config`,
-  adminTestSandboxConnection: `${ExternalApi}${api_host}/admin/sandbox/test`,
+    `/admin/v1/sandbox/providers/${providerId}/schema`,
+  adminGetSandboxConfig: `/admin/v1/sandbox/config`,
+  adminSetSandboxConfig: `/admin/v1/sandbox/config`,
+  adminTestSandboxConnection: `/admin/v1/sandbox/test`,
 };

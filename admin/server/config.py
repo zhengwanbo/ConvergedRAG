@@ -95,6 +95,15 @@ class PostgresConfig(MetaConfig):
         return result
 
 
+class OracleConfig(MetaConfig):
+
+    def to_dict(self) -> dict[str, Any]:
+        result = super().to_dict()
+        if 'extra' not in result:
+            result['extra'] = dict()
+        return result
+
+
 class RetrievalConfig(BaseConfig):
     retrieval_type: str
 
@@ -296,7 +305,15 @@ def load_configurations(config_path: str) -> list[BaseConfig]:
                 username = v.get('user')
                 password = v.get('password')
                 config = MySQLConfig(id=id_count, name=name, host=host, port=port, username=username, password=password,
-                                     service_type="meta_data", meta_type="mysql", detail_func_name="get_mysql_status")
+                                     service_type="meta_data", meta_type="mysql", detail_func_name="get_meta_db_status")
+                configurations.append(config)
+                id_count += 1
+            case "oracle":
+                name: str = 'oracle'
+                host: str = v.get('host')
+                port: int = v.get('port')
+                config = OracleConfig(id=id_count, name=name, host=host, port=port,
+                                      service_type="meta_data", meta_type="oracle", detail_func_name="get_meta_db_status")
                 configurations.append(config)
                 id_count += 1
             case "admin":

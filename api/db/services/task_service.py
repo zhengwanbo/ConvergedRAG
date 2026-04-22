@@ -333,19 +333,19 @@ class TaskService(CommonService):
                     )
                 ).execute()
         else:
-            with DB.lock("update_progress", -1):
-                if info["progress_msg"]:
-                    progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
-                    cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
-                if "progress" in info:
-                    prog = info["progress"]
-                    cls.model.update(progress=prog).where(
-                        (cls.model.id == id) &
-                        (
-                            (cls.model.progress != -1) &
-                            ((prog == -1) | (prog > cls.model.progress))
-                        )
-                    ).execute()
+            #with DB.lock("update_progress", -1):
+            if info["progress_msg"]:
+                progress_msg = trim_header_by_lines(task.progress_msg + "\n" + info["progress_msg"], 3000)
+                cls.model.update(progress_msg=progress_msg).where(cls.model.id == id).execute()
+            if "progress" in info:
+                prog = info["progress"]
+                cls.model.update(progress=prog).where(
+                    (cls.model.id == id) &
+                    (
+                        (cls.model.progress != -1) &
+                        ((prog == -1) | (prog > cls.model.progress))
+                    )
+                ).execute()
 
         process_duration = (datetime.now() - task.begin_at).total_seconds()
         cls.model.update(process_duration=process_duration).where(cls.model.id == id).execute()

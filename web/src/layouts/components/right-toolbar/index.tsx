@@ -1,5 +1,5 @@
 import { useTranslate } from '@/hooks/common-hooks';
-import { DownOutlined, GithubOutlined } from '@ant-design/icons';
+import { DownOutlined } from '@ant-design/icons';
 import { Dropdown, MenuProps, Space } from 'antd';
 import camelCase from 'lodash/camelCase';
 import React, { useCallback, useMemo } from 'react';
@@ -13,9 +13,9 @@ import {
   useListTenant,
 } from '@/hooks/use-user-setting-request';
 import { TenantRole } from '@/pages/user-setting/constants';
-import { BellRing, CircleHelp, MoonIcon, SunIcon } from 'lucide-react';
+import { BellRing, MoonIcon, SunIcon } from 'lucide-react';
 import { useNavigate } from 'react-router';
-import styled from './index.less';
+import styled from './index.module.less';
 
 const Circle = ({ children, ...restProps }: React.PropsWithChildren) => {
   return (
@@ -80,12 +80,6 @@ const RightToolBar = () => {
             <DownOutlined />
           </Space>
         </Dropdown>
-        <Circle>
-          <GithubOutlined onClick={handleGithubCLick} />
-        </Circle>
-        <Circle>
-          <CircleHelp className="size-4" onClick={handleDocHelpCLick} />
-        </Circle>
         <Circle>
           {theme === 'dark' ? (
             <MoonIcon onClick={onMoonClick} size={20} />

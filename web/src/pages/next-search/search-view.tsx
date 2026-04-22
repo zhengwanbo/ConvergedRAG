@@ -92,7 +92,7 @@ export default function SearchingView({
             setIsSearching?.(false);
           }}
         >
-          RAGFlow
+          Smart AI Agent Factory
         </h1>
         <div
           className={cn(

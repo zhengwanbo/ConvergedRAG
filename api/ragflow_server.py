@@ -45,8 +45,87 @@ from agent.plugin import GlobalPluginManager
 from rag.utils.redis_conn import RedisDistributedLock
 
 stop_event = threading.Event()
+bootstrap_lock = threading.Lock()
+bootstrap_done = False
+bootstrap_logged = False
+update_progress_started = False
 
 RAGFLOW_DEBUGPY_LISTEN = int(os.environ.get('RAGFLOW_DEBUGPY_LISTEN', "0"))
+
+
+def _log_boot_banner():
+    global bootstrap_logged
+    if bootstrap_logged:
+        return
+    bootstrap_logged = True
+    logging.info(r"""
+        ____   ___    ______ ______ __
+       / __ \ /   |  / ____// ____// /____  _      __
+      / /_/ // /| | / / __ / /_   / // __ \| | /| / /
+     / _, _// ___ |/ /_/ // __/  / // /_/ /| |/ |/ /
+    /_/ |_|/_/  |_|\____//_/    /_/ \____/ |__/|__/
+
+    """)
+    logging.info(f'RAGFlow version: {get_ragflow_version()}')
+    logging.info(f'project base: {get_project_base_directory()}')
+
+
+def _start_update_progress_thread():
+    global update_progress_started
+    if update_progress_started:
+        return
+    update_progress_started = True
+    logging.info("Starting update_progress thread")
+    stop_event.clear()
+    t = threading.Thread(target=update_progress, daemon=True)
+    t.start()
+
+
+def ensure_server_bootstrapped(debug: bool = False, init_superuser_flag: bool = False):
+    global bootstrap_done
+    with bootstrap_lock:
+        if bootstrap_done:
+            return
+
+        faulthandler.enable()
+        init_root_logger("ragflow_server")
+        _log_boot_banner()
+        show_configs()
+        settings.init_settings()
+        settings.print_rag_settings()
+
+        if RAGFLOW_DEBUGPY_LISTEN > 0:
+            logging.info(f"debugpy listen on {RAGFLOW_DEBUGPY_LISTEN}")
+            import debugpy
+            debugpy.listen(("0.0.0.0", RAGFLOW_DEBUGPY_LISTEN))
+
+        init_web_db()
+        init_web_data()
+
+        if init_superuser_flag:
+            init_superuser()
+
+        RuntimeConfig.DEBUG = debug
+        if RuntimeConfig.DEBUG:
+            logging.info("run on debug mode")
+        RuntimeConfig.init_env()
+        RuntimeConfig.init_config(
+            JOB_SERVER_HOST=settings.HOST_IP,
+            HTTP_PORT=settings.HOST_PORT,
+        )
+
+        GlobalPluginManager.load_plugins()
+
+        if threading.current_thread() is threading.main_thread():
+            signal.signal(signal.SIGINT, signal_handler)
+            signal.signal(signal.SIGTERM, signal_handler)
+
+        _start_update_progress_thread()
+        logging.info(
+            "RAGFlow bootstrap completed after %.2fs initialization.",
+            time.time() - start_ts,
+        )
+        bootstrap_done = True
 
 def update_progress():
     lock_value = str(uuid.uuid4())
@@ -73,36 +152,18 @@ def signal_handler(sig, frame):
     stop_event.wait(1)
     sys.exit(0)
 
+
+@app.before_serving
+async def _bootstrap_before_serving():
+    ensure_server_bootstrapped()
+
+
+@app.after_serving
+async def _shutdown_after_serving():
+    shutdown_all_mcp_sessions()
+    stop_event.set()
+
 if __name__ == '__main__':
-    faulthandler.enable()
-    init_root_logger("ragflow_server")
-    logging.info(r"""
-        ____   ___    ______ ______ __
-       / __ \ /   |  / ____// ____// /____  _      __
-      / /_/ // /| | / / __ / /_   / // __ \| | /| / /
-     / _, _// ___ |/ /_/ // __/  / // /_/ /| |/ |/ /
-    /_/ |_|/_/  |_|\____//_/    /_/ \____/ |__/|__/
-
-    """)
-    logging.info(
-        f'RAGFlow version: {get_ragflow_version()}'
-    )
-    logging.info(
-        f'project base: {get_project_base_directory()}'
-    )
-    show_configs()
-    settings.init_settings()
-    settings.print_rag_settings()
-
-    if RAGFLOW_DEBUGPY_LISTEN > 0:
-        logging.info(f"debugpy listen on {RAGFLOW_DEBUGPY_LISTEN}")
-        import debugpy
-        debugpy.listen(("0.0.0.0", RAGFLOW_DEBUGPY_LISTEN))
-
-    # init db
-    init_web_db()
-    init_web_data()
-    # init runtime config
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -120,30 +181,10 @@ if __name__ == '__main__':
         print(get_ragflow_version())
         sys.exit(0)
 
-    if args.init_superuser:
-        init_superuser()
-    RuntimeConfig.DEBUG = args.debug
-    if RuntimeConfig.DEBUG:
-        logging.info("run on debug mode")
-
-    RuntimeConfig.init_env()
-    RuntimeConfig.init_config(JOB_SERVER_HOST=settings.HOST_IP, HTTP_PORT=settings.HOST_PORT)
-
-    GlobalPluginManager.load_plugins()
-
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
-
-    def delayed_start_update_progress():
-        logging.info("Starting update_progress thread (delayed)")
-        t = threading.Thread(target=update_progress, daemon=True)
-        t.start()
-
-    if RuntimeConfig.DEBUG:
-        if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-            threading.Timer(1.0, delayed_start_update_progress).start()
-    else:
-        threading.Timer(1.0, delayed_start_update_progress).start()
+    ensure_server_bootstrapped(
+        debug=args.debug,
+        init_superuser_flag=args.init_superuser,
+    )
 
     # start http server
     try:

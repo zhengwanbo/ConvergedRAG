@@ -1,4 +1,4 @@
-#
+
 #  Copyright 2024 The InfiniFlow Authors. All Rights Reserved.
 #
 #  Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,6 +30,7 @@ from itsdangerous.url_safe import URLSafeTimedSerializer as Serializer
 from peewee import InterfaceError, OperationalError, BigIntegerField, BooleanField, CharField, CompositeKey, DateTimeField, Field, FloatField, IntegerField, Metadata, Model, TextField
 from playhouse.migrate import MySQLMigrator, PostgresqlMigrator, migrate
 from playhouse.pool import PooledMySQLDatabase, PooledPostgresqlDatabase
+from api.db.oracle_ext import PooledOracleDatabase, OracleMigrator
 
 from api import utils
 from api.db import SerializedType
@@ -50,6 +51,7 @@ class TextFieldType(Enum):
     MYSQL = "LONGTEXT"
     OCEANBASE = "LONGTEXT"
     POSTGRES = "TEXT"
+    ORACLE = "CLOB"  # 定制开发：Wanbo 20250415
 
 
 class LongTextField(TextField):
@@ -72,6 +74,13 @@ class JSONField(LongTextField):
     def python_value(self, value):
         if not value:
             return self.default_value
+        # 定制开发：Wanbo 20250415
+        # 将 CLOB 类型数据转换为字符串
+        field_type = TextFieldType[settings.DATABASE_TYPE.upper()].value
+        if field_type == "CLOB":
+            value = value.read()
+            #logger.debug(f"Converted CLOB to string: {value}")
+
         return json_loads(value, object_hook=self._object_hook, object_pairs_hook=self._object_pairs_hook)
 
 
@@ -131,8 +140,22 @@ def auto_date_timestamp_db_field():
 def remove_field_name_prefix(field_name):
     return field_name[2:] if field_name.startswith("f_") else field_name
 
+ # 定制开发：Wanbo 20250415
+class UpperCaseModelMeta(type(Model)):
+    def __new__(cls, name, bases, attrs):
+        # 处理表名（如果有 db_table 属性）
+        if 'Meta' in attrs and hasattr(attrs['Meta'], 'db_table'):
+            attrs['Meta'].db_table = attrs['Meta'].db_table.upper()
 
-class BaseModel(Model):
+        # 处理字段名
+        for attr_name, attr_value in list(attrs.items()):
+            if isinstance(attr_value, Field):
+                # 将字段名转为大写
+                attr_value.column_name = attr_name.upper()
+
+        return super().__new__(cls, name, bases, attrs)
+
+class BaseModel(Model, metaclass=UpperCaseModelMeta):
     create_time = BigIntegerField(null=True, index=True)
     create_date = DateTimeField(null=True, index=True)
     update_time = BigIntegerField(null=True, index=True)
@@ -213,6 +236,7 @@ class BaseModel(Model):
     @classmethod
     def insert(cls, __data=None, **insert):
         if isinstance(__data, dict) and __data:
+            __data = dict(__data)
             __data[cls._meta.combined["create_time"]] = current_timestamp()
         if insert:
             insert["create_time"] = current_timestamp()
@@ -464,16 +488,58 @@ class RetryingPooledOceanBaseDatabase(PooledMySQLDatabase):
         return None
 
 
+class RetryingPooledOracleDatabase(PooledOracleDatabase):
+    # 定制开发：Wanbo 20250415
+    def __init__(self, *args, **kwargs):
+        self.max_retries = kwargs.pop("max_retries", 5)
+        self.retry_delay = kwargs.pop("retry_delay", 1)
+        super().__init__(*args, **kwargs)
+
+    def execute_sql(self, sql, params=None, commit=True):
+        for attempt in range(self.max_retries + 1):
+            try:
+                return super().execute_sql(sql, params, commit)
+            except (OperationalError, InterfaceError) as e:
+                if attempt < self.max_retries:
+                    logging.warning(f"Oracle connection issue (attempt {attempt + 1}/{self.max_retries}): {e}")
+                    self._handle_connection_loss()
+                    time.sleep(self.retry_delay * (2 ** attempt))
+                else:
+                    raise
+        return None
+
+    def _handle_connection_loss(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+        self.connect(reuse_if_open=True)
+
+    def begin(self):
+        for attempt in range(self.max_retries + 1):
+            try:
+                return super().begin()
+            except (OperationalError, InterfaceError):
+                if attempt < self.max_retries:
+                    self._handle_connection_loss()
+                    time.sleep(self.retry_delay * (2 ** attempt))
+                else:
+                    raise
+        return None
+
+
 class PooledDatabase(Enum):
     MYSQL = RetryingPooledMySQLDatabase
     OCEANBASE = RetryingPooledOceanBaseDatabase
     POSTGRES = RetryingPooledPostgresqlDatabase
+    ORACLE = RetryingPooledOracleDatabase  # 定制开发：Wanbo 20250415
 
 
 class DatabaseMigrator(Enum):
     MYSQL = MySQLMigrator
     OCEANBASE = MySQLMigrator
     POSTGRES = PostgresqlMigrator
+    ORACLE = OracleMigrator  # 定制开发：Wanbo 20250415
 
 
 @singleton
@@ -617,6 +683,7 @@ class MysqlDatabaseLock:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+
         if isinstance(self.db, PooledMySQLDatabase):
             self.unlock()
 
@@ -629,10 +696,104 @@ class MysqlDatabaseLock:
         return magic
 
 
+class OracleDatabaseLock:
+    # 定制开发：Wanbo 20250415
+    def __init__(self, lock_name, timeout=10, db=None):
+        self.lock_name = lock_name
+        self.timeout = int(timeout)
+        self.db = db if db else DB
+
+    def _allocate_lock_handle(self, cursor):
+        lock_handle = cursor.var(str)
+        cursor.execute(
+            """
+            BEGIN
+                DBMS_LOCK.ALLOCATE_UNIQUE(lockname => :lock_name, lockhandle => :lock_handle);
+            END;
+            """,
+            {"lock_name": self.lock_name, "lock_handle": lock_handle},
+        )
+        return lock_handle
+
+    def lock(self):
+        # 在 Oracle 中，先通过 PL/SQL 分配 lock handle，再请求锁。
+        cursor = self.db.connection().cursor()
+        try:
+            lock_handle = self._allocate_lock_handle(cursor)
+            result = cursor.var(int)
+            cursor.execute(
+                """
+                BEGIN
+                    :result := DBMS_LOCK.REQUEST(
+                        lockhandle => :lock_handle,
+                        timeout => :timeout,
+                        release_on_commit => FALSE
+                    );
+                END;
+                """,
+                {
+                    "result": result,
+                    "lock_handle": lock_handle,
+                    "timeout": self.timeout,
+                },
+            )
+            ret = int(result.getvalue())
+        finally:
+            cursor.close()
+
+        if ret == 0:  # 成功获取锁
+            return True
+        elif ret == 1:  # 获取锁超时
+            raise Exception(f'acquire oracle lock {self.lock_name} timeout')
+        else:  # 获取锁失败
+            raise Exception(f'failed to acquire lock {self.lock_name}, return code: {ret}')
+
+    def unlock(self):
+        # 在 Oracle 中，释放锁时需要使用之前分配得到的 lock handle。
+        cursor = self.db.connection().cursor()
+        try:
+            lock_handle = self._allocate_lock_handle(cursor)
+            result = cursor.var(int)
+            cursor.execute(
+                """
+                BEGIN
+                    :result := DBMS_LOCK.RELEASE(lockhandle => :lock_handle);
+                END;
+                """,
+                {"result": result, "lock_handle": lock_handle},
+            )
+            ret = int(result.getvalue())
+        finally:
+            cursor.close()
+
+        if ret == 0:  # 成功释放锁
+            return True
+        elif ret == 3:  # 锁不存在/参数错误
+            raise Exception(f'oracle lock {self.lock_name} does not exist')
+        else:  # 释放锁失败
+            raise Exception(f'failed to release lock {self.lock_name}, return code: {ret}')
+
+    def __enter__(self):
+        if isinstance(self.db, PooledOracleDatabase):
+            self.lock()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if isinstance(self.db, PooledOracleDatabase):
+            self.unlock()
+
+    def __call__(self, func):
+        @wraps(func)
+        def magic(*args, **kwargs):
+            with self:
+                return func(*args, **kwargs)
+        return magic
+
 class DatabaseLock(Enum):
     MYSQL = MysqlDatabaseLock
     OCEANBASE = MysqlDatabaseLock
     POSTGRES = PostgresDatabaseLock
+    ORACLE = OracleDatabaseLock
 
 
 DB = BaseDataBase().database_connection
@@ -653,7 +814,9 @@ class DataBaseModel(BaseModel):
 
 
 @DB.connection_context()
-@DB.lock("init_database_tables", 60)
+# remove db lock for oracle. will check it feature.
+# @DB.lock("init_database_tables", 60)
+
 def init_database_tables(alter_fields=[]):
     members = inspect.getmembers(sys.modules[__name__], inspect.isclass)
     table_objs = []
@@ -713,7 +876,7 @@ class User(DataBaseModel, AuthUser):
         return jwt.dumps(str(self.access_token))
 
     class Meta:
-        db_table = "user"
+        db_table = "users"
 
 
 class Tenant(DataBaseModel):
@@ -723,10 +886,10 @@ class Tenant(DataBaseModel):
     llm_id = CharField(max_length=128, null=False, help_text="default llm ID", index=True)
     embd_id = CharField(max_length=128, null=False, help_text="default embedding model ID", index=True)
     asr_id = CharField(max_length=128, null=False, help_text="default ASR model ID", index=True)
-    img2txt_id = CharField(max_length=128, null=False, help_text="default image to text model ID", index=True)
-    rerank_id = CharField(max_length=128, null=False, help_text="default rerank model ID", index=True)
+    img2txt_id = CharField(max_length=128, null=True, help_text="default image to text model ID", index=True)
+    rerank_id = CharField(max_length=128, null=True, help_text="default rerank model ID", index=True)
     tts_id = CharField(max_length=256, null=True, help_text="default tts model ID", index=True)
-    parser_ids = CharField(max_length=256, null=False, help_text="document processors", index=True)
+    parser_ids = CharField(max_length=256, null=True, help_text="document processors", index=True)
     credit = IntegerField(default=512, index=True)
     status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
 
@@ -876,7 +1039,7 @@ class Document(DataBaseModel):
     token_num = IntegerField(default=0, index=True)
     chunk_num = IntegerField(default=0, index=True)
     progress = FloatField(default=0, index=True)
-    progress_msg = TextField(null=True, help_text="process message", default="")
+    progress_msg = TextField(null=True, help_text="process message", default="A")
     process_begin_at = DateTimeField(null=True, index=True)
     process_duration = FloatField(default=0)
     suffix = CharField(max_length=32, null=False, help_text="The real file extension suffix", index=True)
@@ -897,10 +1060,10 @@ class File(DataBaseModel):
     location = CharField(max_length=255, null=True, help_text="where dose it store", index=True)
     size = IntegerField(default=0, index=True)
     type = CharField(max_length=32, null=False, help_text="file extension", index=True)
-    source_type = CharField(max_length=128, null=False, default="", help_text="where dose this document come from", index=True)
+    source_type = CharField(max_length=128, null=False, default="A", help_text="where dose this document come from", index=True)
 
     class Meta:
-        db_table = "file"
+        db_table = "files"
 
 
 class File2Document(DataBaseModel):
@@ -917,7 +1080,7 @@ class Task(DataBaseModel):
     doc_id = CharField(max_length=32, null=False, index=True)
     from_page = IntegerField(default=0)
     to_page = IntegerField(default=100000000)
-    task_type = CharField(max_length=32, null=False, default="")
+    task_type = CharField(max_length=32, null=False, default="A")
     priority = IntegerField(default=0)
 
     begin_at = DateTimeField(null=True, index=True)
@@ -928,7 +1091,9 @@ class Task(DataBaseModel):
     retry_count = IntegerField(default=0)
     digest = TextField(null=True, help_text="task digest", default="")
     chunk_ids = LongTextField(null=True, help_text="chunk ids", default="")
-
+    
+    class Meta:
+        db_table = "task"
 
 class Dialog(DataBaseModel):
     id = CharField(max_length=32, primary_key=True)
@@ -956,7 +1121,7 @@ class Dialog(DataBaseModel):
 
     do_refer = CharField(max_length=1, null=False, default="1", help_text="it needs to insert reference index into answer or not")
 
-    rerank_id = CharField(max_length=128, null=False, help_text="default rerank model ID")
+    rerank_id = CharField(max_length=128, null=True, help_text="default rerank model ID")
 
     kb_ids = JSONField(null=False, default=[])
     status = CharField(max_length=1, null=True, help_text="is it validate(0: wasted, 1: validate)", default="1", index=True)
@@ -1294,20 +1459,25 @@ class SystemSettings(DataBaseModel):
     name = CharField(max_length=128, primary_key=True)
     source = CharField(max_length=32, null=False, index=False)
     data_type = CharField(max_length=32, null=False, index=False)
-    value = TextField(null=False, help_text="Configuration value (JSON, string, etc.)")
+    value = TextField(null=True, help_text="Configuration value (JSON, string, etc.)")
     class Meta:
         db_table = "system_settings"
 
+def _run_migration_step(step):
+    if hasattr(step, "run"):
+        step.run()
+
 def alter_db_add_column(migrator, table_name, column_name, column_type):
     try:
-        migrate(migrator.add_column(table_name, column_name, column_type))
+        _run_migration_step(migrator.add_column(table_name, column_name, column_type))
     except OperationalError as ex:
-        error_codes = [1060]
-        error_messages = ['Duplicate column name']
+        error_codes = [1060, 1430]  # 1060 MySQL, 1430 Oracle duplicate column
+        error_messages = ['Duplicate column name', 'ORA-01430']
+        error_text = str(ex)
 
         should_skip_error = (
                 (hasattr(ex, 'args') and ex.args and ex.args[0] in error_codes) or
-                (str(ex) in error_messages)
+                any(msg in error_text for msg in error_messages)
         )
 
         if not should_skip_error:
@@ -1319,14 +1489,14 @@ def alter_db_add_column(migrator, table_name, column_name, column_type):
 
 def alter_db_column_type(migrator, table_name, column_name, new_column_type):
     try:
-        migrate(migrator.alter_column_type(table_name, column_name, new_column_type))
+        _run_migration_step(migrator.alter_column_type(table_name, column_name, new_column_type))
     except Exception as ex:
         logging.critical(f"Failed to alter {settings.DATABASE_TYPE.upper()}.{table_name} column {column_name} type, error: {ex}")
         pass
 
 def alter_db_rename_column(migrator, table_name, old_column_name, new_column_name):
     try:
-        migrate(migrator.rename_column(table_name, old_column_name, new_column_name))
+        _run_migration_step(migrator.rename_column(table_name, old_column_name, new_column_name))
     except Exception:
         # rename fail will lead to a weired error.
         # logging.critical(f"Failed to rename {settings.DATABASE_TYPE.upper()}.{table_name} column {old_column_name} to {new_column_name}, error: {ex}")
@@ -1335,9 +1505,9 @@ def alter_db_rename_column(migrator, table_name, old_column_name, new_column_nam
 def migrate_db():
     logging.disable(logging.ERROR)
     migrator = DatabaseMigrator[settings.DATABASE_TYPE.upper()].value(DB)
-    alter_db_add_column(migrator, "file", "source_type", CharField(max_length=128, null=False, default="", help_text="where dose this document come from", index=True))
-    alter_db_add_column(migrator, "tenant", "rerank_id", CharField(max_length=128, null=False, default="BAAI/bge-reranker-v2-m3", help_text="default rerank model ID"))
-    alter_db_add_column(migrator, "dialog", "rerank_id", CharField(max_length=128, null=False, default="", help_text="default rerank model ID"))
+    alter_db_add_column(migrator, "files", "source_type", CharField(max_length=128, null=False, default="A", help_text="where dose this document come from", index=True))
+    alter_db_add_column(migrator, "tenant", "rerank_id", CharField(max_length=128, null=True, default="BAAI/bge-reranker-v2-m3", help_text="default rerank model ID"))
+    alter_db_add_column(migrator, "dialog", "rerank_id", CharField(max_length=128, null=True, default="", help_text="default rerank model ID"))
     alter_db_column_type(migrator, "dialog", "top_k", IntegerField(default=1024))
     alter_db_add_column(migrator, "tenant_llm", "api_key", CharField(max_length=2048, null=True, help_text="API KEY", index=True))
     alter_db_add_column(migrator, "api_token", "source", CharField(max_length=16, null=True, help_text="none|agent|dialog", index=True))
@@ -1352,7 +1522,7 @@ def migrate_db():
     alter_db_add_column(migrator, "task", "digest", TextField(null=True, help_text="task digest", default=""))
     alter_db_add_column(migrator, "task", "chunk_ids", LongTextField(null=True, help_text="chunk ids", default=""))
     alter_db_add_column(migrator, "conversation", "user_id", CharField(max_length=255, null=True, help_text="user_id", index=True))
-    alter_db_add_column(migrator, "task", "task_type", CharField(max_length=32, null=False, default=""))
+    alter_db_add_column(migrator, "task", "task_type", CharField(max_length=32, null=False, default="A"))
     alter_db_add_column(migrator, "task", "priority", IntegerField(default=0))
     alter_db_add_column(migrator, "user_canvas", "permission", CharField(max_length=16, null=False, help_text="me|team", default="me", index=True))
     alter_db_add_column(migrator, "llm", "is_tools", BooleanField(null=False, help_text="support tools", default=False))

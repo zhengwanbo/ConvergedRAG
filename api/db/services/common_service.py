@@ -21,6 +21,7 @@ from peewee import InterfaceError, OperationalError
 from api.db.db_models import DB
 from common.misc_utils import get_uuid
 from common.time_utils import current_timestamp, datetime_format
+from common import settings
 
 def retry_db_operation(func):
     @retry(
@@ -200,7 +201,12 @@ class CommonService:
                 d["update_date"] = current_datetime
 
             for i in range(0, len(data_list), batch_size):
-                cls.model.insert_many(data_list[i : i + batch_size]).execute()
+                batch = data_list[i : i + batch_size]
+                if settings.DATABASE_TYPE.upper() == "ORACLE":
+                    for row in batch:
+                        cls.model.insert(dict(row)).execute()
+                else:
+                    cls.model.insert_many(batch).execute()
 
     @classmethod
     @DB.connection_context()

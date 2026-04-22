@@ -1,3 +1,5 @@
+import { LanguageList, LanguageMap } from '@/constants/common';
+import { TimezoneList } from '@/constants/setting';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useId, useMemo } from 'react';
@@ -15,6 +17,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 
+import { SelectWithSearch } from '@/components/originui/select-with-search';
 import {
   Select,
   SelectContent,
@@ -30,6 +33,9 @@ import { IS_ENTERPRISE } from '../utils';
 
 interface CreateUserFormData {
   email: string;
+  nickname: string;
+  language?: string;
+  timezone?: string;
   password: string;
   confirmPassword: string;
   role?: string;
@@ -85,6 +91,81 @@ export const CreateUserForm = ({
         />
 
         {/* Password field */}
+        <FormField
+          control={form.control}
+          name="nickname"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium">
+                {t('setting.nickname')}
+              </FormLabel>
+              <FormControl>
+                <Input
+                  placeholder={t('setting.nickname')}
+                  autoComplete="nickname"
+                  className="mt-2 px-3 h-10 bg-bg-input border-border-button"
+                  {...field}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="language"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium">
+                {t('setting.language')}
+              </FormLabel>
+              <FormControl>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <SelectTrigger className="w-full h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+
+                  <SelectContent className="bg-bg-base">
+                    <SelectGroup>
+                      {LanguageList.map((language) => (
+                        <SelectItem key={language} value={language}>
+                          {LanguageMap[language as keyof typeof LanguageMap]}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="timezone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel className="text-sm font-medium">
+                {t('setting.timezone')}
+              </FormLabel>
+              <FormControl>
+                <SelectWithSearch
+                  options={TimezoneList.map((timeStr) => ({
+                    value: timeStr,
+                    label: timeStr,
+                  }))}
+                  placeholder={t('setting.timezonePlaceholder')}
+                  onChange={field.onChange}
+                  value={field.value}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
         <FormField
           control={form.control}
           name="password"
@@ -183,6 +264,9 @@ function useCreateUserForm(props?: {
     return z
       .object({
         email: z.string().email({ message: t('admin.invalidEmail') }),
+        nickname: z.string().min(1, { message: t('setting.nicknameRequired') }),
+        language: z.string().optional(),
+        timezone: z.string().optional(),
         password: z.string().min(6, { message: t('admin.passwordMinLength') }),
         confirmPassword: z
           .string()
@@ -198,6 +282,9 @@ function useCreateUserForm(props?: {
   const form = useForm<CreateUserFormData>({
     defaultValues: {
       email: '',
+      nickname: '',
+      language: getBrowserLanguage(),
+      timezone: getBrowserTimezone(),
       password: '',
       confirmPassword: '',
       ...(props?.defaultValues ?? {}),
@@ -218,6 +305,42 @@ function useCreateUserForm(props?: {
     form,
     FormComponent,
   };
+}
+
+function getBrowserLanguage(): string {
+  if (typeof navigator === 'undefined') {
+    return 'English';
+  }
+
+  const language = navigator.language.toLowerCase();
+
+  if (language.startsWith('zh-tw') || language.startsWith('zh-hk')) {
+    return 'Traditional Chinese';
+  }
+  if (language.startsWith('zh')) return 'Chinese';
+  if (language.startsWith('ja')) return 'Japanese';
+  if (language.startsWith('de')) return 'German';
+  if (language.startsWith('fr')) return 'French';
+  if (language.startsWith('es')) return 'Spanish';
+  if (language.startsWith('vi')) return 'Vietnamese';
+  if (language.startsWith('ru')) return 'Russian';
+  if (language.startsWith('it')) return 'Italian';
+  if (language.startsWith('pt')) return 'Portuguese BR';
+  if (language.startsWith('id')) return 'Indonesia';
+
+  return 'English';
+}
+
+function getBrowserTimezone(): string {
+  if (typeof Intl === 'undefined') {
+    return 'UTC+8\tAsia/Shanghai';
+  }
+
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return (
+    TimezoneList.find((item) => item.endsWith(`\t${timeZone}`)) ||
+    'UTC+8\tAsia/Shanghai'
+  );
 }
 
 export default useCreateUserForm;

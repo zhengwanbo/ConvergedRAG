@@ -590,6 +590,8 @@ async def use_sql(question, field_map, tenant_id, chat_mdl, quota=True, kb_ids=N
         doc_engine = "infinity"
     elif settings.DOC_ENGINE_OCEANBASE:
         doc_engine = "oceanbase"
+    elif getattr(settings, "DOC_ENGINE_ORACLE", False):
+        doc_engine = "oracle"  # 定制开发：Wanbo 20250415
     else:
         doc_engine = "es"
 
@@ -649,7 +651,7 @@ Write SQL using json_extract_string() with exact field names. Include doc_id, do
             "\n".join([f"  - {field}" for field in json_field_names]),
             question
         )
-    elif doc_engine == "oceanbase":
+    elif doc_engine in ("oceanbase", "oracle"):
         # Build OceanBase prompts with JSON extraction context
         json_field_names = list(field_map.keys())
         row_count_override = (
@@ -726,7 +728,7 @@ Write SQL using exact field names above. Include doc_id, docnm_kwd for data quer
         sql = sql.rstrip().rstrip(';').strip()
 
         # Add kb_id filter for ES/OS only (Infinity already has it in table name)
-        if doc_engine != "infinity" and kb_ids:
+        if doc_engine not in ("infinity", "oracle", "oceanbase") and kb_ids:
             # Build kb_filter: single KB or multiple KBs with OR
             if len(kb_ids) == 1:
                 kb_filter = f"kb_id = '{kb_ids[0]}'"
@@ -759,7 +761,7 @@ Write SQL using exact field names above. Include doc_id, docnm_kwd for data quer
     except Exception as e:
         logging.warning(f"use_sql: Initial SQL execution FAILED with error: {e}")
         # Build retry prompt with error information
-        if doc_engine in ("infinity", "oceanbase"):
+        if doc_engine in ("infinity", "oceanbase", "oracle"):
             # Build Infinity error retry prompt
             json_field_names = list(field_map.keys())
             user_prompt = """

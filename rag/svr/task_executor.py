@@ -40,7 +40,6 @@ from rag.utils.base64_image import image2id
 from rag.utils.raptor_utils import should_skip_raptor, get_skip_reason
 from common.log_utils import init_root_logger
 from common.config_utils import show_configs
-from rag.graphrag.general.index import run_graphrag_for_kb
 from rag.graphrag.utils import get_llm_cache, set_llm_cache, get_tags_from_cache, set_tags_to_cache
 from rag.prompts.generator import keyword_extraction, question_proposal, content_tagging, run_toc_from_text, \
     gen_metadata
@@ -130,6 +129,19 @@ minio_limiter = asyncio.Semaphore(MAX_CONCURRENT_MINIO)
 kg_limiter = asyncio.Semaphore(2)
 WORKER_HEARTBEAT_TIMEOUT = int(os.environ.get('WORKER_HEARTBEAT_TIMEOUT', '120'))
 stop_event = threading.Event()
+
+
+def load_run_graphrag_for_kb():
+    try:
+        from rag.graphrag.general.index import run_graphrag_for_kb
+    except ModuleNotFoundError as exc:
+        missing_module = exc.name or "unknown"
+        raise ModuleNotFoundError(
+            "GraphRAG dependencies are not installed. "
+            f"Missing module: {missing_module}. "
+            "Install the GraphRAG extras before running graphrag tasks."
+        ) from exc
+    return run_graphrag_for_kb
 
 
 def signal_handler(sig, frame):
@@ -1084,6 +1096,7 @@ async def do_handle_task(task):
         chat_model = LLMBundle(task_tenant_id, LLMType.CHAT, llm_name=kb_task_llm_id, lang=task_language)
         with_resolution = graphrag_conf.get("resolution", False)
         with_community = graphrag_conf.get("community", False)
+        run_graphrag_for_kb = load_run_graphrag_for_kb()
         async with kg_limiter:
             # await run_graphrag(task, task_language, with_resolution, with_community, chat_model, embedding_model, progress_callback)
             result = await run_graphrag_for_kb(

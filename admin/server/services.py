@@ -34,7 +34,10 @@ from api.utils.crypt import decrypt
 from api.utils import health_utils
 
 from api.common.exceptions import AdminException, UserAlreadyExistsError, UserNotFoundError
-from config import SERVICE_CONFIGS
+try:
+    from admin.server.config import SERVICE_CONFIGS
+except ImportError:  # pragma: no cover
+    from config import SERVICE_CONFIGS
 
 
 class UserMgr:
@@ -78,7 +81,14 @@ class UserMgr:
         return result
 
     @staticmethod
-    def create_user(username, password, role="user") -> dict:
+    def create_user(
+        username,
+        password,
+        role="user",
+        nickname="",
+        language=None,
+        timezone=None,
+    ) -> dict:
         # Validate the email address
         if not re.match(r"^[\w\._-]+@([\w_-]+\.)+[\w-]{2,}$", username):
             raise AdminException(f"Invalid email address: {username}!")
@@ -88,11 +98,15 @@ class UserMgr:
         # Construct user info data
         user_info_dict = {
             "email": username,
-            "nickname": "",  # ask user to edit it manually in settings.
+            "nickname": nickname,
             "password": decrypt(password),
             "login_channel": "password",
             "is_superuser": role == "admin",
         }
+        if language:
+            user_info_dict["language"] = language
+        if timezone:
+            user_info_dict["timezone"] = timezone
         return create_new_user(user_info_dict)
 
     @staticmethod
@@ -271,12 +285,16 @@ class ServiceMgr:
     @staticmethod
     def get_all_services():
         doc_engine = os.getenv("DOC_ENGINE", "elasticsearch")
+        db_type = os.getenv("DB_TYPE", "mysql")
         result = []
         configs = SERVICE_CONFIGS.configs
         for service_id, config in enumerate(configs):
             config_dict = config.to_dict()
             if config_dict["service_type"] == "retrieval":
                 if config_dict["extra"]["retrieval_type"] != doc_engine:
+                    continue
+            if config_dict["service_type"] == "meta_data":
+                if config_dict["extra"]["meta_type"] != db_type:
                     continue
             try:
                 service_detail = ServiceMgr.get_service_details(service_id)
@@ -311,6 +329,10 @@ class ServiceMgr:
         doc_engine = os.getenv("DOC_ENGINE", "elasticsearch")
         if service_config.service_type == "retrieval":
             if service_config.retrieval_type != doc_engine:
+                raise AdminException(f"invalid service_index: {service_idx}")
+        db_type = os.getenv("DB_TYPE", "mysql")
+        if service_config.service_type == "meta_data":
+            if service_config.meta_type != db_type:
                 raise AdminException(f"invalid service_index: {service_idx}")
 
         service_info = {"name": service_config.name, "detail_func_name": service_config.detail_func_name}

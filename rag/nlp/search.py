@@ -313,10 +313,10 @@ class Dealer:
                 sres.field[i]["important_kwd"] = [sres.field[i]["important_kwd"]]
         ins_tw = []
         for i in sres.ids:
-            content_ltks = list(OrderedDict.fromkeys(sres.field[i][cfield].split()))
-            title_tks = [t for t in sres.field[i].get("title_tks", "").split() if t]
-            question_tks = [t for t in sres.field[i].get("question_tks", "").split() if t]
-            important_kwd = sres.field[i].get("important_kwd", [])
+            content_ltks = list(OrderedDict.fromkeys((sres.field[i].get(cfield) or "").split()))
+            title_tks = [t for t in (sres.field[i].get("title_tks") or "").split() if t]
+            question_tks = [t for t in (sres.field[i].get("question_tks") or "").split() if t]
+            important_kwd = sres.field[i].get("important_kwd") or []
             tks = content_ltks + title_tks * 2 + important_kwd * 5 + question_tks * 6
             ins_tw.append(tks)
 
@@ -340,9 +340,9 @@ class Dealer:
                 sres.field[i]["important_kwd"] = [sres.field[i]["important_kwd"]]
         ins_tw = []
         for i in sres.ids:
-            content_ltks = sres.field[i][cfield].split()
-            title_tks = [t for t in sres.field[i].get("title_tks", "").split() if t]
-            important_kwd = sres.field[i].get("important_kwd", [])
+            content_ltks = (sres.field[i].get(cfield) or "").split()
+            title_tks = [t for t in (sres.field[i].get("title_tks") or "").split() if t]
+            important_kwd = sres.field[i].get("important_kwd") or []
             tks = content_ltks + title_tks + important_kwd
             ins_tw.append(tks)
 
@@ -400,6 +400,12 @@ class Dealer:
 
         sres = await self.search(req, [index_name(tid) for tid in tenant_ids], kb_ids, embd_mdl, highlight,
                            rank_feature=rank_feature)
+        logging.debug(
+            "Dealer.retrieval search_result total=%s ids=%s sample_ids=%s",
+            sres.total,
+            len(sres.ids),
+            sres.ids[:5],
+        )
 
         if rerank_mdl and sres.total > 0:
             sim, tsim, vsim = self.rerank_by_model(
@@ -442,9 +448,13 @@ class Dealer:
 
         if filtered_count == 0:
             ranks["doc_aggs"] = []
+            logging.debug("Dealer.retrieval filtered_result total=0 chunks=0")
             return ranks
 
-        max_pages = max(RERANK_LIMIT // max(page_size, 1), 1)
+        page_size = max(page_size, 1)
+        total_pages = max(math.ceil(filtered_count / page_size), 1)
+        page = min(max(page, 1), total_pages)
+        max_pages = max(RERANK_LIMIT // page_size, 1)
         page_index = (page - 1) % max_pages
         begin = page_index * page_size
         end = begin + page_size
@@ -509,6 +519,12 @@ class Dealer:
         else:
             ranks["doc_aggs"] = []
 
+        logging.debug(
+            "Dealer.retrieval final_result total=%s page_chunks=%s doc_aggs=%s",
+            ranks["total"],
+            len(ranks["chunks"]),
+            len(ranks["doc_aggs"]),
+        )
         return ranks
 
     def sql_retrieval(self, sql, fetch_size=128, format="json"):

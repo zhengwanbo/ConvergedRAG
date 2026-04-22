@@ -46,7 +46,11 @@ request.interceptors.response.use(
       });
 
       authorizationUtil.removeAll();
-      history.push(Routes.Admin);
+      history.push(
+        window.location.pathname.startsWith(Routes.Admin)
+          ? Routes.Admin
+          : Routes.Login,
+      );
       window.location.reload();
     } else if (data?.code && data.code !== 0) {
       message.error(`${i18n.t('message.hint')}: ${data?.code}`, {
@@ -76,7 +80,11 @@ request.interceptors.response.use(
       });
 
       authorizationUtil.removeAll();
-      history.push(Routes.Admin);
+      history.push(
+        window.location.pathname.startsWith(Routes.Admin)
+          ? Routes.Admin
+          : Routes.Login,
+      );
       window.location.reload();
     } else if (data?.code && data.code !== 0) {
       message.error({
@@ -154,10 +162,19 @@ export const logout = () => request.get<ResponseData<boolean>>(adminLogout);
 export const listUsers = () =>
   request.get<ResponseData<AdminService.ListUsersItem[]>>(adminListUsers, {});
 
-export const createUser = (email: string, password: string) =>
+export const createUser = (params: {
+  email: string;
+  password: string;
+  nickname: string;
+  language?: string;
+  timezone?: string;
+}) =>
   request.post<ResponseData<boolean>>(adminCreateUser, {
-    username: email,
-    password,
+    username: params.email,
+    password: params.password,
+    nickname: params.nickname,
+    language: params.language,
+    timezone: params.timezone,
   });
 
 export const grantSuperuser = (email: string) =>

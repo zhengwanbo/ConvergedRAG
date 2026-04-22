@@ -65,8 +65,8 @@ export default defineConfig(({ mode, command }) => {
         overlay: false,
       },
       proxy: {
-        '/api/v1/admin': {
-          target: 'http://127.0.0.1:9381/',
+        '^/admin/v1': {
+          target: 'http://127.0.0.1:9380/',
           changeOrigin: true,
           ws: true,
         },

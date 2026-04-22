@@ -35,7 +35,7 @@ from timeit import default_timer as timer
 
 from rag.utils.redis_conn import REDIS_CONN
 from quart import jsonify
-from api.utils.health_utils import run_health_checks, get_oceanbase_status
+from api.utils.health_utils import run_health_checks, get_oceanbase_status, get_oracle_status
 from common import settings
 
 
@@ -213,6 +213,23 @@ def oceanbase_status():
             data={
                 "status": "error",
                 "message": f"Failed to get OceanBase status: {str(e)}"
+            },
+            code=500
+        )
+
+
+@manager.route("/oracle/status", methods=["GET"])  # noqa: F821
+@login_required
+def oracle_status():
+    # 定制开发：Wanbo 20250415
+    try:
+        status_info = get_oracle_status()
+        return get_json_result(data=status_info)
+    except Exception as e:
+        return get_json_result(
+            data={
+                "status": "error",
+                "message": f"Failed to get Oracle status: {str(e)}"
             },
             code=500
         )

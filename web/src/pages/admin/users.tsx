@@ -120,7 +120,17 @@ const STATUS_FILTER_OPTIONS = [
   { value: 'inactive', label: 'admin.inactive' },
 ];
 
-function AdminUserManagement() {
+interface AdminUserManagementProps {
+  allowDetailNavigation?: boolean;
+  detailBasePath?: string;
+  titleKey?: string;
+}
+
+function AdminUserManagement({
+  allowDetailNavigation = true,
+  detailBasePath = Routes.AdminUserManagement,
+  titleKey = 'admin.userManagement',
+}: AdminUserManagementProps = {}) {
   const [{ userInfo }] = useContext(CurrentUserInfoContext);
 
   const { t } = useTranslation();
@@ -189,14 +199,26 @@ function AdminUserManagement() {
   const createUserMutation = useMutation({
     mutationFn: async ({
       email,
+      nickname,
+      language,
+      timezone,
       password,
       role,
     }: {
       email: string;
+      nickname: string;
+      language?: string;
+      timezone?: string;
       password: string;
       role?: string;
     }) => {
-      await createUser(email, rsaPsw(password) as string);
+      await createUser({
+        email,
+        nickname,
+        language,
+        timezone,
+        password: rsaPsw(password) as string,
+      });
 
       if (IS_ENTERPRISE && role) {
         await updateUserRoleMutation.mutateAsync({ email, role });
@@ -394,18 +416,18 @@ function AdminUserManagement() {
 
           return (
             <div className="opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100 transition-opacity">
-              <Button
-                variant="transparent"
-                size="icon"
-                className="border-0"
-                onClick={() =>
-                  navigate(
-                    `${Routes.AdminUserManagement}/${row.original.email}`,
-                  )
-                }
-              >
-                <LucideClipboardList />
-              </Button>
+              {allowDetailNavigation && (
+                <Button
+                  variant="transparent"
+                  size="icon"
+                  className="border-0"
+                  onClick={() =>
+                    navigate(`${detailBasePath}/${row.original.email}`)
+                  }
+                >
+                  <LucideClipboardList />
+                </Button>
+              )}
 
               {!isMe && (
                 <>
@@ -476,7 +498,7 @@ function AdminUserManagement() {
 
         <ScrollArea className="size-full">
           <CardHeader className="space-y-0 flex flex-row justify-between items-center">
-            <CardTitle>{t('admin.userManagement')}</CardTitle>
+            <CardTitle>{t(titleKey)}</CardTitle>
 
             <div className="ml-auto flex justify-end gap-4">
               <Popover>

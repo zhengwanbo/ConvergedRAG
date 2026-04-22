@@ -27,7 +27,6 @@ dependencies = [
     "discord-py==2.3.2",
     "dropbox==12.0.2",
     "duckduckgo-search>=7.2.0,<8.0.0",
-    "editdistance==0.8.1",
     "elasticsearch-dsl==8.12.0",
     "exceptiongroup>=1.3.0,<2.0.0",
     "extract-msg>=0.39.0",
@@ -70,6 +69,7 @@ dependencies = [
     "opendal>=0.45.0,<0.46.0",
     "opensearch-py==2.7.1",
     "ormsgpack==1.5.0",
+    "oracledb>=3.0.0,<4.0.0", # 定制开发：Wanbo 20250415
     "pdfplumber==0.10.4",
     "pluginlib==0.9.4",
     "psycopg2-binary>=2.9.11,<3.0.0",
@@ -100,7 +100,7 @@ dependencies = [
     "slack-sdk==3.37.0",
     "socksio==1.0.0",
     "agentrun-sdk>=0.0.16,<1.0.0",
-    "nest-asyncio>=1.6.0,<2.0.0",  # Needed for agent/component/message.py
+    "nest-asyncio>=1.6.0,<2.0.0", # Needed for agent/component/message.py
     "sqlglotrs==0.9.0",
     "strenum==0.4.15",
     "tavily-python==0.5.1",

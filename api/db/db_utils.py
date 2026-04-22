@@ -13,10 +13,12 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 #
+import logging
 import operator
 from functools import reduce
 
 from playhouse.pool import PooledMySQLDatabase
+from api.db.oracle_ext import PooledOracleDatabase
 
 from common.time_utils import current_timestamp, timestamp_to_date
 
@@ -42,7 +44,23 @@ def bulk_insert_into_db(model, data_source, replace_on_conflict=False):
 
     for i in range(0, len(data_source), batch_size):
         with DB.atomic():
-            query = model.insert_many(data_source[i:i + batch_size])
+            batch = data_source[i:i + batch_size]
+            if replace_on_conflict and isinstance(DB, PooledOracleDatabase):
+                for row in batch:
+                    try:
+                        model.insert(dict(row)).execute()
+                    except Exception as e:
+                        if "ORA-00001" not in str(e):
+                            raise
+                        logging.warning(
+                            "Ignore Oracle duplicate insert for %s id=%s: %s",
+                            model.__name__,
+                            row.get("id"),
+                            e,
+                        )
+                continue
+
+            query = model.insert_many(batch)
             if replace_on_conflict:
                 if isinstance(DB, PooledMySQLDatabase):
                     query = query.on_conflict(preserve=preserve)

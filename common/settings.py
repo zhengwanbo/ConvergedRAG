@@ -28,6 +28,7 @@ import rag.utils
 import rag.utils.es_conn
 import rag.utils.infinity_conn
 import rag.utils.ob_conn
+import rag.utils.oracle_conn
 import rag.utils.opensearch_conn
 from rag.utils.azure_sas_conn import RAGFlowAzureSasBlob
 from rag.utils.azure_spn_conn import RAGFlowAzureSpnBlob
@@ -42,6 +43,7 @@ from rag.nlp import search
 import memory.utils.es_conn as memory_es_conn
 import memory.utils.infinity_conn as memory_infinity_conn
 import memory.utils.ob_conn as memory_ob_conn
+import memory.utils.oracle_conn as memory_oracle_conn
 
 LLM = None
 LLM_FACTORY = None
@@ -66,7 +68,7 @@ SECRET_KEY = None
 FACTORY_LLM_INFOS = None
 ALLOWED_LLM_FACTORIES = None
 
-DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
+DATABASE_TYPE = os.getenv("DB_TYPE", "oracle")  # 定制开发：Wanbo 20250415
 DATABASE = decrypt_database_config(name=DATABASE_TYPE)
 
 # authentication
@@ -78,9 +80,10 @@ HTTP_APP_KEY = None
 GITHUB_OAUTH = None
 FEISHU_OAUTH = None
 OAUTH_CONFIG = None
-DOC_ENGINE = os.getenv('DOC_ENGINE', 'elasticsearch')
+DOC_ENGINE = os.getenv('DOC_ENGINE', 'oracle')  # 定制开发：Wanbo 20250415
 DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
 DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
+DOC_ENGINE_ORACLE = (DOC_ENGINE.lower() == "oracle")  # 定制开发：Wanbo 20250415
 
 
 docStoreConn = None
@@ -114,6 +117,8 @@ AZURE = {}
 S3 = {}
 MINIO = {}
 OB = {}
+ORACLE = {}  # 定制开发：Wanbo 20250415
+ORCLVECTOR = {}  # 定制开发：Wanbo 20250415
 OSS = {}
 OS = {}
 GCS = {}
@@ -170,7 +175,7 @@ class StorageFactory:
 
 def init_settings():
     global DATABASE_TYPE, DATABASE
-    DATABASE_TYPE = os.getenv("DB_TYPE", "mysql")
+    DATABASE_TYPE = os.getenv("DB_TYPE", "oracle")  # 定制开发：Wanbo 20250415
     DATABASE = decrypt_database_config(name=DATABASE_TYPE)
     
     global ALLOWED_LLM_FACTORIES, LLM_FACTORY, LLM_BASE_URL
@@ -243,10 +248,11 @@ def init_settings():
     FEISHU_OAUTH = get_base_config("oauth", {}).get("feishu")
     OAUTH_CONFIG = get_base_config("oauth", {})
 
-    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, docStoreConn, ES, OB, OS, INFINITY
-    DOC_ENGINE = os.environ.get("DOC_ENGINE", "elasticsearch")
+    global DOC_ENGINE, DOC_ENGINE_INFINITY, DOC_ENGINE_OCEANBASE, DOC_ENGINE_ORACLE, docStoreConn, ES, OB, OS, INFINITY, ORACLE, ORCLVECTOR
+    DOC_ENGINE = os.environ.get("DOC_ENGINE", "oracle")  # 定制开发：Wanbo 20250415
     DOC_ENGINE_INFINITY = (DOC_ENGINE.lower() == "infinity")
     DOC_ENGINE_OCEANBASE = (DOC_ENGINE.lower() == "oceanbase")
+    DOC_ENGINE_ORACLE = (DOC_ENGINE.lower() == "oracle")  # 定制开发：Wanbo 20250415
     lower_case_doc_engine = DOC_ENGINE.lower()
     if lower_case_doc_engine == "elasticsearch":
         ES = get_base_config("es", {})
@@ -267,6 +273,11 @@ def init_settings():
     elif lower_case_doc_engine == "seekdb":
         OB = get_base_config("seekdb", {})
         docStoreConn = rag.utils.ob_conn.OBConnection()
+    elif lower_case_doc_engine == "oracle":
+        # 定制开发：Wanbo 20250415
+        ORACLE = get_base_config("oracle", {})
+        ORCLVECTOR = get_base_config("orclvector", {})
+        docStoreConn = rag.utils.oracle_conn.OracleConnection()
     else:
         raise Exception(f"Not supported doc engine: {DOC_ENGINE}")
 
@@ -284,6 +295,9 @@ def init_settings():
         msgStoreConn = memory_infinity_conn.InfinityConnection()
     elif lower_case_doc_engine in ["oceanbase", "seekdb"]:
         msgStoreConn = memory_ob_conn.OBConnection()
+    elif lower_case_doc_engine == "oracle":
+        # 定制开发：Wanbo 20250415
+        msgStoreConn = memory_oracle_conn.OracleConnection()
 
     global AZURE, S3, MINIO, OSS, GCS
     if STORAGE_IMPL_TYPE in ['AZURE_SPN', 'AZURE_SAS']:
@@ -396,4 +410,3 @@ def _resolve_per_model_config(entry_dict, backup_factory, backup_api_key, backup
 def print_rag_settings():
     logging.info(f"MAX_CONTENT_LENGTH: {DOC_MAXIMUM_SIZE}")
     logging.info(f"MAX_FILE_COUNT_PER_USER: {int(os.environ.get('MAX_FILE_NUM_PER_USER', 0))}")
-

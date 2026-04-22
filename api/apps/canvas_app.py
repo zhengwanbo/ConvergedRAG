@@ -39,6 +39,7 @@ from api.utils.api_utils import (
 )
 from agent.canvas import Canvas
 from peewee import MySQLDatabase, PostgresqlDatabase
+from api.db.oracle_ext import OracleDatabase
 from api.db.db_models import APIToken, Task
 import time
 
@@ -378,6 +379,16 @@ async def test_db_connect():
         elif req["db_type"] == "oceanbase":
             db = MySQLDatabase(req["database"], user=req["username"], host=req["host"], port=req["port"],
                                password=req["password"], charset="utf8mb4")
+        elif req["db_type"] == "oracle":
+            # 定制开发：Wanbo 20250415
+            db = OracleDatabase(
+                req["database"],
+                user=req["username"],
+                host=req["host"],
+                port=req["port"],
+                password=req["password"],
+                db=req["database"],
+            )
         elif req["db_type"] == 'postgres':
             db = PostgresqlDatabase(req["database"], user=req["username"], host=req["host"], port=req["port"],
                                     password=req["password"])
