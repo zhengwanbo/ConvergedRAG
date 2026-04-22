@@ -214,11 +214,11 @@ def init_settings():
     image2text_entry = _parse_model_entry(llm_default_models.get("image2text_model", IMAGE2TEXT_MDL))
 
     global CHAT_CFG, EMBEDDING_CFG, RERANK_CFG, ASR_CFG, IMAGE2TEXT_CFG
-    CHAT_CFG = _resolve_per_model_config(chat_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL)
-    EMBEDDING_CFG = _resolve_per_model_config(embedding_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL)
-    RERANK_CFG = _resolve_per_model_config(rerank_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL)
-    ASR_CFG = _resolve_per_model_config(asr_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL)
-    IMAGE2TEXT_CFG = _resolve_per_model_config(image2text_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL)
+    CHAT_CFG = _resolve_per_model_config(chat_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL, "OpenAI-API-Compatible")
+    EMBEDDING_CFG = _resolve_per_model_config(embedding_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL, "OpenAI-API-Compatible")
+    RERANK_CFG = _resolve_per_model_config(rerank_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL, "OpenAI-API-Compatible")
+    ASR_CFG = _resolve_per_model_config(asr_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL, "OpenAI")
+    IMAGE2TEXT_CFG = _resolve_per_model_config(image2text_entry, LLM_FACTORY, API_KEY, LLM_BASE_URL, "OpenAI-API-Compatible")
 
     CHAT_MDL = CHAT_CFG.get("model", "") or ""
     EMBEDDING_MDL = EMBEDDING_CFG.get("model", "") or ""
@@ -391,13 +391,44 @@ def _parse_model_entry(entry):
     return {"name": "", "factory": None, "api_key": None, "base_url": None}
 
 
-def _resolve_per_model_config(entry_dict, backup_factory, backup_api_key, backup_base_url):
+def canonicalize_llm_factory(factory, base_url="", unknown_factory_fallback=""):
+    if not factory:
+        return ""
+
+    raw_factory = factory.strip()
+    factory_aliases = {
+        "qwen": "OpenAI-API-Compatible",
+    }
+
+    aliased_factory = factory_aliases.get(raw_factory.lower(), raw_factory)
+    known_factories = {item.get("name") for item in (FACTORY_LLM_INFOS or []) if item.get("name")}
+    if aliased_factory in known_factories:
+        return aliased_factory
+
+    if base_url and unknown_factory_fallback:
+        return unknown_factory_fallback
+
+    return aliased_factory
+
+
+def _resolve_per_model_config(entry_dict, backup_factory, backup_api_key, backup_base_url, unknown_factory_fallback=""):
     name = (entry_dict.get("name") or "").strip()
-    m_factory = entry_dict.get("factory") or backup_factory or ""
+    m_factory = canonicalize_llm_factory(
+        entry_dict.get("factory") or backup_factory or "",
+        entry_dict.get("base_url") or backup_base_url or "",
+        unknown_factory_fallback,
+    )
     m_api_key = entry_dict.get("api_key") or backup_api_key or ""
     m_base_url = entry_dict.get("base_url") or backup_base_url or ""
 
-    if name and "@" not in name and m_factory:
+    if name and "@" in name:
+        name_prefix, name_factory = name.rsplit("@", 1)
+        canonical_factory = canonicalize_llm_factory(name_factory, m_base_url, unknown_factory_fallback)
+        if canonical_factory:
+            name = f"{name_prefix}@{canonical_factory}"
+            if not m_factory:
+                m_factory = canonical_factory
+    elif name and m_factory:
         name = f"{name}@{m_factory}"
 
     return {

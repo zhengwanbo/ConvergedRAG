@@ -38,8 +38,8 @@ from common import settings
 from api.common.base64 import encode_to_base64
 
 DEFAULT_SUPERUSER_NICKNAME = os.getenv("DEFAULT_SUPERUSER_NICKNAME", "admin")
-DEFAULT_SUPERUSER_EMAIL = os.getenv("DEFAULT_SUPERUSER_EMAIL", "admin@ragflow.io")
-DEFAULT_SUPERUSER_PASSWORD = os.getenv("DEFAULT_SUPERUSER_PASSWORD", "admin")
+DEFAULT_SUPERUSER_EMAIL = os.getenv("DEFAULT_SUPERUSER_EMAIL", "admin@aibs.cn")
+DEFAULT_SUPERUSER_PASSWORD = os.getenv("DEFAULT_SUPERUSER_PASSWORD", "admin#2026")
 
 def init_superuser(nickname=DEFAULT_SUPERUSER_NICKNAME, email=DEFAULT_SUPERUSER_EMAIL, password=DEFAULT_SUPERUSER_PASSWORD, role=UserTenantRole.OWNER):
     user_info = {
@@ -144,6 +144,35 @@ def init_llm_factory():
         KnowledgebaseService.update_document_number_in_init(kb_id=kb_id, doc_num=doc_count.get(kb_id, 0))
 
 
+def repair_bootstrap_tenants():
+    repaired_tenant_ids = []
+    for tenant in TenantService.get_all():
+        if TenantLLMService.query(tenant_id=tenant.id):
+            continue
+
+        tenant_updates = {}
+        if settings.CHAT_MDL:
+            tenant_updates["llm_id"] = settings.CHAT_MDL
+        if settings.EMBEDDING_MDL:
+            tenant_updates["embd_id"] = settings.EMBEDDING_MDL
+        if settings.ASR_MDL:
+            tenant_updates["asr_id"] = settings.ASR_MDL
+        if settings.IMAGE2TEXT_MDL:
+            tenant_updates["img2txt_id"] = settings.IMAGE2TEXT_MDL
+        if settings.RERANK_MDL:
+            tenant_updates["rerank_id"] = settings.RERANK_MDL
+
+        if tenant_updates:
+            TenantService.update_by_id(tenant.id, tenant_updates)
+
+        tenant_llm = get_init_tenant_llm(tenant.id)
+        if tenant_llm:
+            TenantLLMService.insert_many(tenant_llm)
+        repaired_tenant_ids.append(tenant.id)
+
+    if repaired_tenant_ids:
+        logging.warning("Repaired bootstrap tenant LLM authorization for tenants: %s", ",".join(repaired_tenant_ids))
+
 
 def add_graph_templates():
     dir = os.path.join(get_project_base_directory(), "agent", "templates")
@@ -169,8 +198,9 @@ def init_web_data():
     init_table()
 
     init_llm_factory()
-    # if not UserService.get_all().count():
-    #    init_superuser()
+    repair_bootstrap_tenants()
+    if not UserService.get_all().count():
+        init_superuser()
 
     add_graph_templates()
     init_message_id_sequence()
@@ -205,5 +235,6 @@ def init_table():
 
 
 if __name__ == '__main__':
+    settings.init_settings()
     init_web_db()
     init_web_data()

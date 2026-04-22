@@ -74,6 +74,28 @@ def get_init_tenant_llm(user_id):
                 }
             )
 
+    for model_type, model_config in model_configs.items():
+        model_id = (model_config or {}).get("model", "")
+        if not model_id:
+            continue
+
+        llm_name, llm_factory = TenantLLMService.split_model_name_and_factory(model_id)
+        llm_factory = llm_factory or settings.canonicalize_llm_factory(model_config.get("factory", ""), model_config.get("base_url", ""))
+        if not llm_factory:
+            continue
+
+        tenant_llm.append(
+            {
+                "tenant_id": user_id,
+                "llm_factory": llm_factory,
+                "llm_name": llm_name,
+                "model_type": model_type.value,
+                "api_key": model_config.get("api_key", ""),
+                "api_base": model_config.get("base_url", ""),
+                "max_tokens": 8192,
+            }
+        )
+
     unique = {}
     for item in tenant_llm:
         key = (item["tenant_id"], item["llm_factory"], item["llm_name"])

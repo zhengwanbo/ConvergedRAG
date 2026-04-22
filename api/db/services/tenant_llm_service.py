@@ -71,15 +71,16 @@ class TenantLLMService(CommonService):
         if len(arr) < 2:
             return model_name, None
         if len(arr) > 2:
-            return "@".join(arr[0:-1]), arr[-1]
+            return "@".join(arr[0:-1]), settings.canonicalize_llm_factory(arr[-1])
 
         # model name must be xxx@yyy
         try:
             model_factories = settings.FACTORY_LLM_INFOS
             model_providers = set([f["name"] for f in model_factories])
-            if arr[-1] not in model_providers:
+            canonical_factory = settings.canonicalize_llm_factory(arr[-1])
+            if canonical_factory not in model_providers and canonical_factory != "OpenAI-API-Compatible":
                 return model_name, None
-            return arr[0], arr[-1]
+            return arr[0], canonical_factory
         except Exception as e:
             logging.exception(f"TenantLLMService.split_model_name_and_factory got exception: {e}")
         return model_name, None
